@@ -1,0 +1,480 @@
+\documentclass[handout,francais]{beamer}
+\usetheme{CambridgeUS}
+%\input{header}
+%\usepackage[utf8x]{inputenc}
+\usepackage{amsmath,amsfonts,graphicx}
+%\usepackage{beamerthemeONERA}
+\usepackage{listings}
+%\usepackage{dsfont}
+%\usepackage{enumitem}
+%\setlist[description]{style = multiline, labelwidth = 60pt}
+
+\usepackage{tikz} % Required for drawing custom shapes
+\usetikzlibrary{shadows, arrows, decorations.pathmorphing, fadings, shapes.arrows, positioning, calc, shapes, fit, matrix}
+
+\usepackage{polyglossia}
+%\usepackage{multirow}
+%\usepackage{colortbl}
+
+\institute
+[ONERA, DTIM/CHP]
+{Office National d'Etudes et de Recherches Aérospatiales,\\
+\inst{1}Département Traitement de l'information et modélisation}
+
+
+\definecolor{lightblue}{RGB}{0,200,255} 
+\definecolor{paper}{RGB}{239,227,157}
+\definecolor{ocre}{RGB}{243,102,25} % Define the orange color used for highlighting throughout the book
+\definecolor{BurntOrange}{RGB}{238,154,0}
+\definecolor{OliveGreen}{RGB}{188,238,104}
+\definecolor{DarkGreen}{RGB}{0,128,0}
+\definecolor{BrickRed}{RGB}{238,44,44}
+\definecolor{Tan}{RGB}{210,180,140}
+\definecolor{Aquamarine}{RGB}{127,255,212}
+\definecolor{NavyBlue}{RGB}{0,64,128}
+\definecolor{royalblue}{rgb}{0.3,0.5,0.9}
+\definecolor{lightblue}{rgb}{0.7,0.7,1.0}
+\definecolor{navyblue}{rgb}{0.1,0.2,0.7}
+\definecolor{Maroon}{rgb}{0.5,0.5,0.1}
+\definecolor{green!50!black}{rgb}{0.3,0.5,0.9}
+\definecolor{darkgreen}{rgb}{0. 0.2 0}
+\definecolor{darkred}{rgb}{0.4 0 0}
+\definecolor{green!50!black}{rgb}{0.2 0. 0.2}
+\definecolor{lightgreen!50!black}{rgb}{0.4 0. 0.4}
+\definecolor{midblue}{rgb}{0. 0.2 0.4}
+\definecolor{verylightgray}{rgb}{0.95 0.95 1.0}
+\definecolor{lightyellow}{rgb}{1.0 0.95 0.75}
+
+
+\title[Programmation des GPGPUs\hspace{2em}]{Autres Outils pour le GPGPU}
+\author[Xavier JUVIGNY]{Xavier JUVIGNY}
+\date{\today}
+
+\institute{ONERA}
+
+\begin{document}
+
+\lstset{%
+  basicstyle=\tiny,
+  frame=single,
+  keywordstyle=\color{blue},
+  language=C++,
+  commentstyle=\color{red},
+  stringstyle=\color{brown},
+  keepspaces=true,
+  showspaces=false,
+  tabsize=2
+}
+
+\begin{frame}
+ \titlepage
+\end{frame}
+
+\begin{frame}
+\frametitle{Plan du cours}
+\tableofcontents
+\end{frame}
+
+\section{OpenCL}
+
+\begin{frame}[fragile]{OpenCL en quelques mots}
+
+{\scriptsize
+\begin{block}{Pourquoi OpenCL}
+\begin{itemize}
+\item CUDA : bibliothèque conviviale, puissante et rapide mais \alert{uniquement portable sur des cartes NVIDIA !};
+\item Besoin d'avoir une bibliothèque plus universelle permettant de gérer des accélérateurs de calcul, d'autres cartes
+graphiques, utilisable sur smartphone et tablettes, etc..
+\item Permettre une accélération de calcul pour les pages web : \textcolor{blue}{WebCL}.
+\end{itemize}
+\end{block}
+
+\begin{block}{OpenCL en quelques mots}
+\begin{itemize}
+\item Standard mis au point par le Khronos Group ( qui font aussi la standardisation d'OpenGL~);
+\item Permet la programmation des GPGPUs, mais aussi des CPUs ( Intel mais aussi les CELLs d'IBM );
+\item Compilateur intégré à la bibliothèque ( comme pour les shaders avec OpenGL );
+\end{itemize}
+\end{block}
+}
+\end{frame}
+
+\begin{frame}[fragile]{OpenCL : Pour et Contre}
+\begin{exampleblock}{Pros}
+\begin{itemize}
+\item Portable sur un grand nombre de plateformes;
+\item Programmation des noyaux proche de CUDA;
+\item Standard ouvert non propriétaire;
+\item Support de plusieurs versions d'OpenCL prévu !
+\end{itemize}
+\end{exampleblock}
+
+\begin{alertblock}{Cons}
+\begin{itemize}
+\item L'API pour la compilation et l'exécution des noyaux est complexe et lourde;
+\item Moins performante que CUDA sur les NVIDIAs;
+\item Intel pour ces processeurs many-c{\oe}urs a plutôt choisi les options
+      multithreading ( TBB en particuliers pour les Knights Landing );
+\end{itemize}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]{Programmation du noyau}
+
+\begin{columns}
+  \begin{column}{0.5\textwidth}
+  \begin{exampleblock}{Noyau OpenCL}
+{\scriptsize
+\begin{lstlisting}
+global float filter[N];
+kernel void 
+convolve(float* image) {
+    local float region[M];
+    ...
+    int ind = 
+          get_global_id(0);
+    region[ind] = image[i];
+    barrier(CLK_LOCAL_MEM_FENCE);
+    ...
+    image[j] = result;
+}
+\end{lstlisting}
+}
+  \end{exampleblock}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+  \begin{alertblock}{Noyau CUDA}
+{\scriptsize
+\begin{lstlisting}
+__device__ float filter[N];
+__global__ void  
+    convolve(float* image) {
+    __shared__ float region[M];
+    ...
+    int ind = threadId.x+
+         blockId.x*blockDim.x;
+    region[ind] = image[i];
+    __syncthreads();
+    ...
+    image[j] = result;
+}
+\end{lstlisting}
+}
+  \end{alertblock}
+  \end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{API d'OpenCL : Plateforme}
+
+{\scriptsize
+\begin{block}{Plateforme}
+\begin{itemize}
+\item Plateforme OpenCL $\equiv$ mise en {\oe}uvre du standard OpenCL;
+\item Plusieurs plateformes possibles sur une machine donnée;
+\item \lstinline@clGetPlatformIDs(cl_uint nb_entries,cl_platform_id *platforms,cl_uint *nb_platforms)@ :
+\begin{lstlisting}
+cl_uint nbEntries;
+clGetPlatformIDs(0, nullptr, &nbEntries);
+std::vector<cl_platform_id> platforms(nbEntries);
+clGetPlatformIDs(platforms.size(), platforms.data(), nullptr);
+\end{lstlisting}
+\item On peut ensuite interroger chaque plateforme pour connaître les
+device supportés et leur type ( CPU ou GPGPU )
+\texttt{clGetDeviceIDs(cl\_platform\_id platform, cl\_device\_type device\_type, cl\_uint nb\_entries, cl\_device\_id *dev, cl\_uint* nb\_dev )} :
+\begin{lstlisting}
+cl_uint nbDev;
+clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0, 
+               nullptr, &nbDev);
+std::vector<cl_device> devs(nbDev);
+clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, nbDev, 
+               devs.data(), nullptr);
+\end{lstlisting}
+\end{itemize}
+\end{block}
+}
+\end{frame}
+
+\begin{frame}[fragile]{API d'OpenCL : contexte}
+
+\begin{itemize}
+\item Pour chaque device utilisé, il faut créer un contexte;
+\item Un contexte en OpenCL permet de gérer les queues de commande, la mémoire
+\item le programme et les noyaux OpenCL;
+\item \texttt{cl\_context clCreateContext( 	cl\_context\_properties *properties,
+cl\_uint num\_devices, const cl\_device\_id *devices,
+void *pfn\_notify ( const char *errinfo, const void *private\_info, 
+size\_t cb, void *user\_data), void *user\_data, cl\_int *errcode\_ret )} : Créé
+un contexte !
+
+\begin{lstlisting}
+cl_int ret;
+context = clCreateContext(nullptr, 1, &devs[0], 
+                          nullptr, nullptr, &ret);
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{API d'OpenCL : Queue de commande}
+\begin{itemize}
+\item Permet de configurer une queue de commande qui : exécute les noyaux dans l'ordre
+d'appel ou dans un ordre dicté uniquement par la dépendance des données;
+\item 
+\texttt{cl\_command\_queue clCreateCommandQueue( cl\_context context,
+  	cl\_device\_id device,
+  	cl\_command\_queue\_properties properties,
+  	cl\_int *errcode\_ret)} :
+
+\begin{lstlisting}
+cl_command_queue command_queue;
+command_queue = clCreateCommandQueue(context, device_id, 0, &ret);
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{API d'OPENCL : Allocation mémoire}
+
+\begin{itemize}
+\item Se fait au travers des objets de type \texttt{cl\_mem}
+\item Permet de réserver et de copier ou de réserver seulement.
+\item \texttt{cl\_mem clCreateBuffer ( cl\_context context,
+cl\_mem\_flags flags,
+size\_t size,
+void *host\_ptr,
+cl\_int *errcode\_ret)}
+\begin{lstlisting}
+cl_mem u_dev, v_dev, w_dev;
+u_dev = clCreateBuffer(context, CL_MEM_READ_ONLY, 
+                       dim * sizeof(float), u, &ret);
+v_dev = clCreateBuffer(context, CL_MEM_READ_ONLY, 
+                       dim * sizeof(float), v, &ret);
+w_dev = clCreateBuffer(context, CL_MEM_WRITE_ONLY, 
+                       dim * sizeof(float), nullptr, &ret);
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Création d'un noyau de calcul}
+\begin{block}{Code source : \texttt{vecadd.cl}}
+\begin{lstlisting}
+kernel void vect_add_cl(global const float* u,
+                        global const float* v,
+                        global       float* w,
+                        const int    dim )
+{
+    const ind = get_global_id(0);
+    if ( ind < dim )
+      w[ind] = u[ind] + v[ind];
+    }
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Création d'un noyau de calcul ( suite )}
+\begin{block}{Création d'un programme composé de noyaux :}
+\begin{lstlisting}
+FILE *fp;
+char fileName[] = "./vecadd.cl";
+char *source_str;
+size_t source_size;
+ 
+/* Load the source code containing the kernel*/
+fp = fopen(fileName, "r");
+source_str = (char*)malloc(MAX_SOURCE_SIZE);
+source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp);
+fclose(fp);
+ 
+cl_program program = 
+   clCreateProgramWithSource(context, 1, 
+                             (const char **)&source_str,
+                             (const size_t *)&source_size, &ret);
+ 
+ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
+ 
+kernel = clCreateKernel(program, "vecadd", &ret);
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Exécution du noyau et lecture du résultat}
+\begin{block}{Passage des arguments}
+\begin{lstlisting}
+ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&u_dev);
+ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&v_dev);
+ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&w_dev);
+ret = clSetKernelArg(kernel, 3, sizeof(int), (void *)&dim);
+ \end{lstlisting}
+ \end{block}
+ 
+ \begin{block}{Exécution du noyau}
+ \begin{lstlisting}
+ret = clEnqueueTask(command_queue, kernel, 0, NULL,NULL);
+\end{lstlisting}
+ \end{block}
+ 
+ \begin{block}{Recopie du résultat en mémoire vive}
+ \begin{lstlisting}
+ret = clEnqueueReadBuffer(command_queue, w_dev, CL_TRUE, 0,
+                          dim * sizeof(float),w, 0, NULL, NULL);
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Finalisation et libération des ressources}
+\begin{block}{Finalisation}
+\begin{lstlisting}
+clFlush(command_queue);
+clFinish(command_queue);
+\end{lstlisting}
+\end{block}
+
+\begin{block}{Libération}
+\begin{lstlisting}
+clReleaseKernel(kernel);
+clReleaseProgram(program);
+clReleaseMemObject(u_dev);
+clReleaseMemObject(v_dev);
+clReleaseMemObject(w_dev);
+clReleaseCommandQueue(command_queue);
+clReleaseContext(context);
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+\section{OpenACC}
+
+\begin{frame}[fragile]{Pourquoi OpenACC ?}
+\scriptsize
+\begin{block}{Naissance d'OpenACC}
+\begin{itemize}
+\item En 2012, le comité de standardisation d'OpenMP veut étendre le langage
+OpenMP pour gérer les GPGPUs;
+\item Difficultés de trouver un consensus parmi tous les intervenants du comité;
+\item Cray, CAPS, NVidia et PGI décident en attendant que le consensus soit trouvé
+de créer un autre standard de programmation OpenACC pour gérer les GPGPUs "à la
+OpenMP".
+\end{itemize}
+\end{block}
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\begin{exampleblock}{Pour}
+\begin{itemize}
+\item Non intrusif : permet de rapidement porter du code sur GPGPU;
+\item Permet d'utiliser des plateformes Nvidia mais aussi ATI;
+\item Simplicité d'utilisation d'OpenACC : permet d'obtenir une bonne
+accélération à moindre coût;
+\end{itemize}
+\end{exampleblock}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{alertblock}{Contre}
+\begin{itemize}
+\item Ne permet pas des performances optimales comme Cuda;
+\item Peu de compilateur le supportent : les compilateurs PGI ( gratuits
+pour usage non commercial ) et gnu c/c++ à partir de la version 6.1 ( encore
+au stage d'ébauche ! )
+\end{itemize}
+\end{alertblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple de code}
+\scriptsize
+\begin{lstlisting}
+#include <stdlib.h>
+#include <stdio.h>
+void saxpy(long n, float a, float *x, float * y) {
+#pragma acc parallel loop
+  for (long i = 0; i < n; ++i)
+    y[i] = a * x[i] + y[i];
+}
+int main(int argc, char **argv) {
+  float sum;
+  long N = 1000000000; // 1 billion floats
+  if (argc > 1) N = atoi(argv[1]);
+  float *x = (float*)malloc(N * sizeof(float));
+  float *y = (float*)malloc(N * sizeof(float));
+  for (long i = 0; i < N; ++i) {
+    x[i] = 2.0f; y[i] = 1.0f;
+  }
+  saxpy(N, 3.0f, x, y);
+  sum = 0.0f;
+  for ( long i = 0; i < N; ++i ) sum += y[i];
+  free(x); free(y);
+  printf("sum = %f\n",sum);
+  return 0;
+}
+\end{lstlisting}
+\end{frame}
+
+\section{OpenMP}
+
+\begin{frame}[fragile]{GPGPU avec OpenMP}
+\scriptsize
+\begin{block}{Historique}
+\begin{itemize}
+\item Support des GPGPUs par OpenMP depuis la version 4.0 de la norme;
+\item Pour l'instant, encore très limité : les compilateurs Intel ne
+supportent que les Xeon Phi, Cray ne propose que OpenACC.
+\item OpenMP 4.0 pour GPU encore au stade rudimentaire pour GCC
+\item Valable pour Clang et compilateurs PGIs
+\end{itemize}
+\end{block}
+
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\begin{exampleblock}{Pour}
+\begin{itemize}
+\item Approche unifiée avec le reste d'OpenMP;
+\item Même simplicité que OpenACC;
+\item \'Evite de mélanger plusieurs directives de compilation !
+\end{itemize}
+\end{exampleblock}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{alertblock}{Contre}
+\begin{itemize}
+\item Ne permet pas d'avoir des performances optimales;
+\item Peu de compilateur supportent OpenMP 4.0 avec GPU aujourd'hui !
+\end{itemize}
+\end{alertblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple de code OpenMP pour GPGPU}
+\begin{lstlisting}
+#include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        printf("Usage: %s \n", argv[0]); return 0;
+    }     
+    int n = atoi(argv[1]);     
+    double* x = (double*)malloc(sizeof(double) * n);
+    double* y = (double*)malloc(sizeof(double) * n); 
+    double idrandmax = 1.0 / RAND_MAX, a = idrandmax * rand();
+    for (int i = 0; i < n; i++) {
+        x[i] = idrandmax * rand(); y[i] = idrandmax * rand();
+    }
+#   pragma omp target data map(tofrom: x[0:n],y[0:n])
+    {
+        #pragma omp target
+        #pragma omp for
+        for (int i = 0; i < n; i++)
+            y[i] += a * x[i];
+    }
+    double avg = 0.0, min = y[0], max = y[0];
+    for (int i = 0; i < n; i++) {
+        avg += y[i];
+        if (y[i] > max) max = y[i]; if (y[i] < min) min = y[i];
+    }
+    printf("min = %f, max = %f, avg = %f\n", min, max, avg / n);     
+    free(x); free(y);
+    return 0;
+}
+\end{lstlisting}
+\end{frame}
+\end{document}

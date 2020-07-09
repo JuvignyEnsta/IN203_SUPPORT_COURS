@@ -1,0 +1,1174 @@
+\documentclass[handout,francais]{beamer}
+\usetheme{CambridgeUS}
+%\input{header}
+%\usepackage[utf8x]{inputenc}
+\usepackage{amsmath,amsfonts,graphicx}
+%\usepackage{beamerthemeONERA}
+\usepackage{listings}
+\usepackage{dsfont}
+\usepackage{enumitem}
+%\setlist[description]{style = multiline, labelwidth = 60pt}
+
+\usepackage{tikz} % Required for drawing custom shapes
+\usetikzlibrary{shadows, arrows, decorations.pathmorphing, fadings, shapes.arrows, positioning, calc, shapes, fit, matrix}
+
+\usepackage{polyglossia}
+\usepackage{multirow}
+\usepackage{colortbl}
+
+\institute
+[ONERA, DTIM/CHP]
+{Office National d'Etudes et de Recherches Aérospatiales,\\
+\inst{1}Département Aéroacoustique}
+
+
+\definecolor{lightblue}{RGB}{0,200,255} 
+\definecolor{paper}{RGB}{239,227,157}
+\definecolor{ocre}{RGB}{243,102,25} % Define the orange color used for highlighting throughout the book
+\definecolor{BurntOrange}{RGB}{238,154,0}
+\definecolor{OliveGreen}{RGB}{188,238,104}
+\definecolor{DarkGreen}{RGB}{0,128,0}
+\definecolor{BrickRed}{RGB}{238,44,44}
+\definecolor{Tan}{RGB}{210,180,140}
+\definecolor{Aquamarine}{RGB}{127,255,212}
+\definecolor{NavyBlue}{RGB}{0,64,128}
+
+\title[Calculateurs parallèles à mémoire partagée\hspace{2em}]{Calculateurs à mémoire partagée}
+\author[Xavier JUVIGNY]{Xavier JUVIGNY}
+\date{\today}
+
+\institute{ONERA}
+\usepackage{enumitem}
+\setitemize{label=\usebeamerfont*{itemize item}%
+            \usebeamercolor[fg]{itemize item}
+            \usebeamertemplate{itemize item}}
+
+\begin{document}
+
+\lstset{%
+  basicstyle=\scriptsize,
+  frame=single,
+  keywordstyle=\scriptsize\color{blue},
+  language=C++,
+  xleftmargin=\parindent,
+  commentstyle=\tiny\ttfamily\color{red},
+  stringstyle=\scriptsize\color{brown},
+  keepspaces=true,
+  showspaces=false,
+  tabsize=2
+}
+
+\begin{frame}
+ \titlepage
+\end{frame}
+
+\begin{frame}
+\frametitle{Plan du cours}
+\tableofcontents
+\end{frame}
+
+\section{Programmation sur machine à mémoire partagée}
+
+\subsection{Notion de thread}
+
+\begin{frame}{Processus}
+
+\begin{block}{Définition}
+\begin{itemize}
+\item Créée par l'OS ou un exécutable
+\item Contient beaucoup d'informations propres :
+\begin{itemize}
+\item id processus, user id, group id
+\item environnement, répertoire de travail
+\item instruction du programme, registre, tas, pile, fichiers
+\item bibliothèques partagées, signaux action, etc.
+\end{itemize}
+\item Prends beaucoup de ressources à sa création
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}{Thread}
+
+{\scriptsize
+\begin{block}{Définition}
+\begin{itemize}
+\item Exécutable léger créer par un processus;
+\item Contient peu d'information propre :
+\begin{itemize}
+\item tas, registres, politique d'exécution
+\item variables propres au code exécuté par le thread;
+\end{itemize}
+\item Possède son propre flot d'instructions;
+\item Partage ressources processus père avec d'autres threads
+\item Meurt avec son processus parent;
+\end{itemize}
+\end{block}
+
+\begin{block}{Propriétés mémoire partagée}
+\begin{itemize}
+\item Changement ressource du père par thread vu par tous ( fermeture fichier,\ldots );
+\item Deux threads ont deux pointeurs égaux $\Rightarrow$  la même donnée;
+\item Conflits mémoires possible lors d'accès en écriture par deux threads sur une variable partagée;
+\end{itemize}
+\end{block}
+}
+\end{frame}
+
+\begin{frame}[fragile]{Comparaison performance création processus vs threads}
+
+{\scriptsize
+\begin{table}[h]
+\begin{center}
+ \begin{tabular}{|c||c|c|c||c|c|c|}\hline
+ \multirow{2}{*}
+ {\bf Plateforme} & \multicolumn{3}{c||}{\lstinline@fork()@} & \multicolumn{3}{c|}{\lstinline@std::thread@} \\ \cline{2-7}
+ & real & user & sys & real & user & sys \\ \hline \hline
+ \rowcolor{lightgray!25}Intel 2.6Ghz Xeon E5-2670 ( 16 c{\oe}urs/n{\oe}uds ) & 8.1 & 0.1 & 2.9 & 0.9 & 0.2 & 0.3 \\ \hline
+ Intel 2.8GHz Xeon 5660 ( 12 c{\oe}urs/n{\oe}uds ) & 4.4 & 0.4 & 4.3 & 0.7 & 0.2 & 0.5 \\ \hline
+ \rowcolor{lightgray!25}AMD   2.4GHz Opteron ( 8 c{\oe}urs/n{\oe}uds ) & 17.6 & 2.2 & 15.7 & 1.4 & 0.3 & 1.3 \\ \hline
+ IBM 4.0 GHz Power 6 ( 8 cpus/n{\oe}uds ) & 9.5 & 0.6 & 8.8 & 1.6 & 0.1 & 0.4 \\ \hline
+ \end{tabular}
+\end{center}
+ \caption{Comparaison création de 50 000 processus ( fork() ) contre création de 50 000 threads ( std::thread )}
+ \label{tab:pvst}
+\end{table}
+}
+
+\end{frame}
+
+\begin{frame}[fragile]{Création et terminaison de threads}
+
+\begin{figure}[h]
+\begin{center}
+\begin{tikzpicture}
+\node[rectangle, fill=yellow,draw] (P) {Processus};
+\node[below = 6cm of P.south] (E){};
+\draw[dashed,thick,red,-latex] (P) -- (E);
+
+\node[below = 7mm of P.south] (N11) {};
+\node[below = 1cm of P.south] (N1) {};
+\node[right = 2cm of N1.south east, rectangle, fill=cyan, draw] (T1) {Thread};
+\draw[dashed, blue, -latex] (N11.north) -|node[above]{\scriptsize Création} (T1.north);
+\node[below = 55mm of P.south] (TE1){};
+\draw[dashed, blue, -latex] (T1.south) |-node[below]{\scriptsize Synchronisation et destruction} (TE1.south);
+
+\node[below = 1.7cm of P.south] (N21) {};
+\node[below = 2cm of P.south] (N2) {};
+\node[left = 2cm of N2.south west, rectangle, fill=green!40, draw] (T2) {Thread};
+\draw[dashed, green!20!black, -latex] (N21.north) -|node[above]{\scriptsize Création} (T2.north);
+\node[below = 45mm of P.south] (TE2){};
+\draw[dashed, green!20!black, -latex] (T2.south) |-node[below]{\scriptsize Synchronisation et destruction} (TE2.south);
+
+\end{tikzpicture}
+\end{center}
+\caption{Exemple de création, synchronisation et terminaison de thread}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}[fragile]{Ajustement du nombre de threads et Hyperthreading}
+
+\begin{block}{Définition de l'hyperthreading}
+\begin{itemize}
+ \item Deux fois plus de décodeur d'instruction que d'unités de calcul;
+ \item Deux threads sur une unité de calcul peuvent se partager les ressources
+       de cette unité ( par exemple calcul sur les entiers et calcul sur les réels ).
+\end{itemize}
+\end{block}
+
+
+\begin{block}{Performance de l'hyperthreading}
+\begin{itemize}
+ \item Au mieux, en prenant deux fois plus de threads que d'unité de calcul, une accélération de 30\%
+ par rapport à un calcul fait avec un nombre de thread égal au nombre d'unité de calcul.
+\end{itemize}
+
+\end{block}
+
+\alert{Pour connaître le nombre d'unité de calcul, attention aux informations données par vos OS. En général, le nombre de CPUs affichés
+est en fait le nombre de décodeur d'instructions. Pour connaître le nombre d'unité de calcul, chercher le nombre de c{\oe}urs disponibles.}
+
+\end{frame}
+
+\begin{frame}[fragile]{Exemple de sortie de lscpu}
+
+\texttt{
+Architecture:          x86\_64\\
+Mode(s) opératoire(s) des processeurs :32-bit, 64-bit\\
+Byte Order:            Little Endian\\
+\textcolor{red}{CPU(s):                4}\\
+On-line CPU(s) list:   0-3\\
+\textcolor{red}{Thread(s) par cœur : 2}\\
+\textcolor{blue}{Cœur(s) par socket : 2}\\
+\textcolor{blue}{Socket(s):             1}\\
+Nœud(s) NUMA :       1\\
+Identifiant constructeur :GenuineIntel\\
+Famille de processeur :6\\
+Modèle :             42\\
+Model name:            Intel(R) Core(TM) i7-2620M CPU \@ 2.70GHz\\
+Révision :           7\\
+...
+}
+\end{frame}
+
+\subsection{Conflits d'accès aux données}
+
+\begin{frame}[fragile]{Concurrence d'accès aux données}
+ \begin{block}{Définition}
+  On dit que des threads sont en concurrence d'accès aux données
+  (Datarace condition) quand :
+  \begin{itemize}
+   \item Un thread lit une variable partagée ``pendant'' qu'un deuxième thread la modifie;
+   \item Les deux threads tentent de modifier ``simultanément'' la même variable.
+  \end{itemize}
+ \end{block}
+
+ \begin{block}{Phénémologie}
+  \begin{itemize}
+   \item Valeurs ``aléatoires'', voire incohérentes, de certaines variables partagées;
+   \item Plantage aléatoire du code sur des accès mémoires;
+  \end{itemize}
+
+ \end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]{Section séquentielle}
+
+\begin{block}{Cas de sections séquentielles}
+ \begin{itemize}
+  \item On garde une ``zone'' du programme afin que les threads ne puissent passer
+  que un par un ou qu'un seul thread y passe;
+  \item Cette zone peut être complexe, comme modifier les valeurs d'un tableau, modifier un
+  dictionnaire, une liste, une pile, etc.
+  \item Généralement, mécanisme relativement lourd et lent.
+  \item Exemples : mutex en pthreads, critical en OpenMP, etc.
+ \end{itemize}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]{Opération atomique}
+ \begin{block}{Cas des opérations atomiques}
+  \begin{itemize}
+   \item La section séquentielle se réduit à une seule opération simple sur un type de base ( entier, réels ,etc. )
+   \item Mécanisme léger et non pénalisant;
+   \item Exemples : atomic sur pthread et OpenMP.
+  \end{itemize}
+
+ \end{block}
+
+\end{frame}
+
+\subsection{Optimisation d'applications parallèles en mémoire partagée}
+
+\begin{frame}[fragile]{Affinité}
+ 
+ \begin{block}{Définition}
+  Le système d'exploitation attache un thread à une unité de calcul spécifique : on parle d'affinité
+ \end{block}
+
+ \begin{block}{Intérêt}
+  \begin{itemize}
+   \item Par défaut, un thread s'exécute sur n'importe quel unité de calcul, et peut migrer durant son exécution;
+   \item Lorsqu'il migre, on pert les données en mémoire cache;
+   \item Sur architecture NUMA, on peut même changer de socket !
+   \item On peut contrôler l'affinité avec l'utilitaire \verb@taskset@ (Linux) sinon API différent selon bibliothèque et
+   OS utilisé !
+  \end{itemize}
+
+ \end{block}
+ 
+\end{frame}
+
+\begin{frame}[fragile]{Application ``Memory bound''}
+ 
+ \begin{block}{Définition}
+  \begin{itemize}
+   \item Quand la vitesse d'exécution de l'application limitée par la vitesse d'accès aux données
+  \end{itemize}
+ \end{block}
+
+ \begin{block}{Explication}
+  \begin{itemize}
+   \item La mémoire vive plus lente que le traitement des données par un CPU;
+   \item Mémoire cache et mémoire interlacée permet d'accélérer l'accès aux données;
+   \item Algorithmes pas toujours possible d'optimiser en mémoire cache ou avec mémoire interlacée;
+   \item Plus le nombre d'unités de calcul grand, plus difficile de ne pas être memory bound.
+  \end{itemize}
+
+ \end{block}
+
+ 
+\end{frame}
+
+\begin{frame}[fragile]{Application ``cpu bound''}
+ 
+\begin{block}{Définition}
+ \begin{itemize}
+  \item Quand la vitesse d'exécution de l'application est limitée à la vitesse de traitement du CPU
+ \end{itemize}
+\end{block}
+
+\begin{block}{Explication}
+ \begin{itemize}
+  \item Programme bien optimisé pour l'architecture mémoire du calculteur;
+  \item Toujours chercher à être le plus ``cpu bound''.
+  \item Pas toujours possible !
+ \end{itemize}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]{Quand peut-on être cpu bound ?}
+ 
+  \begin{block}{Avec la mémoire cache}
+ \begin{itemize}
+  \item Quand le nombre de données accédées $<$ nombre d'opérations effectuées;
+  \item Pas de saut mémoire non réguliers pour la preamption de cache;
+  \item Avoir un algorithme local en temps et espace : accèder dans le délai le plus bref aux mêmes données
+  le plus possible.
+ \end{itemize}
+ \end{block}
+ 
+ \begin{block}{Avec la mémoire interlacée}
+  \begin{itemize}
+   \item Quand on accède à des données successives sur des bancs mémoires différents;
+   \item Ou accès à très peu de variables différentes pour stocker sur des registres.
+  \end{itemize}
+
+ \end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]{Exemple suite itérative}
+ \begin{lstlisting}
+double u = 56547;
+for ( unsigned int iter = 0; iter < 1023; ++iter ) {
+    u = (u%2 == 0 ? u/2 : (3*u+1)/2);
+}
+ \end{lstlisting}
+
+ \begin{columns}[t]
+  \begin{column}{0.5\textwidth}
+   \textcolor{green!25!black}{Mémoire cache} 
+   \\ 
+   \textcolor{blue}{cpu bound}
+   \end{column}
+   \begin{column}{0.5\textwidth}
+   \textcolor{orange!25!black}{Mémoire interlacée}
+   \\
+   \textcolor{blue}{cpu bound}
+  \end{column}
+
+ \end{columns}
+ 
+\end{frame}
+
+\begin{frame}[fragile]{Exemple opération vectorielle}
+ \begin{lstlisting}
+  unsigned long N = 1000000UL;
+  std::vector<double> u(N), v(N), w(N);
+  for ( int i = 0; i < N; ++i ) {
+      u[i] = std::max(v[i],w[i]);
+  }
+ \end{lstlisting}
+
+ \begin{columns}[t]
+  \begin{column}{0.5\textwidth}
+   \textcolor{green!25!black}{Mémoire cache} 
+   \\ 
+   \textcolor{red}{memory bound}
+   \end{column}
+   \begin{column}{0.5\textwidth}
+   \textcolor{orange!25!black}{Mémoire interlacée}
+   \\
+   \textcolor{blue}{cpu bound}
+  \end{column}
+ \end{columns} 
+\end{frame}
+
+\begin{frame}[fragile]{Opération matricielle}
+ \begin{lstlisting}
+std::vector<double> A(N*N);
+std::vector<double> B(N*N);
+std::vector<double> C(N*N);
+...
+for ( int i = 0; i < N; ++i )
+  for ( int j = 0; j < N; ++j )
+    for ( int k = 0; k < N; ++k )
+      C[i+j*N] += A[i+k*N]*B[k+j*N];
+ \end{lstlisting}
+
+ \begin{columns}[t]
+  \begin{column}{0.5\textwidth}
+   \textcolor{green!25!black}{Mémoire cache} 
+   \\ 
+   \textcolor{red}{memory bound}
+   \\
+   Le code peut être optimiser !
+   \end{column}
+   \begin{column}{0.5\textwidth}
+   \textcolor{orange!25!black}{Mémoire interlacée}
+   \\
+   \textcolor{blue}{memory bound}
+   \\
+   Le code peut être optimiser !
+  \end{column}
+ \end{columns} 
+
+\end{frame}
+
+\begin{frame}[fragile]{Opération matricielle ( suite )}
+ \begin{lstlisting}
+std::vector<double> A(N*N);
+std::vector<double> B(N*N);
+std::vector<double> C(N*N);
+...
+for ( int k = 0; k < N; ++k )
+  for ( int j = 0; j < N; ++j )
+    for ( int i = 0; i < N; ++i )
+      C[i+j*N] += A[i+k*N]*B[k+j*N];
+\end{lstlisting}
+
+ \begin{columns}[t]
+  \begin{column}{0.5\textwidth}
+   \textcolor{green!25!black}{Mémoire cache} 
+   \\ 
+   \textcolor{red}{memory bound/cpu bound}
+   \\
+   Mieux mais peut être encore optimiser !
+   \end{column}
+   \begin{column}{0.5\textwidth}
+   \textcolor{orange!25!black}{Mémoire interlacée}
+   \\
+   \textcolor{blue}{cpu bound}
+   \\
+   Code optimisé !
+  \end{column}
+ \end{columns} 
+
+\end{frame}
+
+\begin{frame}[fragile]{Opération matricielle ( suite... )}
+
+\begin{lstlisting}
+std::vector<double> A(N*N);
+std::vector<double> B(N*N);
+std::vector<double> C(N*N);
+...
+const int szBloc = 127;
+// On saucissone les boucles en i et j en plusieurs morceaux 
+// de taille szBloc :
+for ( int kb = 0; kb < N; kb += szBloc )
+  for ( int jb = 0; jb < N; jb += szBloc )
+    for ( int ib = 0; ib < N; ib += szBloc )
+      for ( int k = kb; k < kb+szBloc; ++k )
+        for ( int j = jb; j < jb+szBloc; ++j )
+          for ( int i = ib; i < ib+szBloc; ++i )
+            C[i+j*N] += A[i+k*N]*B[k+j*N];
+\end{lstlisting}
+
+ \begin{columns}[t]
+  \begin{column}{0.5\textwidth}
+   \textcolor{green!25!black}{Mémoire cache} 
+   \\ 
+   \textcolor{red}{cpu bound}
+   \\
+   Code optimisé !
+   \end{column}
+   \begin{column}{0.5\textwidth}
+   \textcolor{orange!25!black}{Mémoire interlacée}
+   \\
+   \textcolor{blue}{cpu bound}
+   \\
+   Code un peu moins optimisé !
+  \end{column}
+ \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Padding pour la mémoire interlacée}
+
+\begin{lstlisting}
+ // Calcul la transposée de la matrice A et la range dans B
+ for ( int i = 0; i < N; ++i )
+   for ( int j = 0; j < N; ++j ) {
+      B[i+j*N] = A[j+i*N];
+   }
+\end{lstlisting}
+
+\begin{itemize}
+\item Accès des données de $A$ optimisé ( lecture linéaire )
+\item Pour $B$, plus délicat :
+  \begin{itemize}
+  \item Si $N$ = multiple du nombre de voies : pire des accès pour $B$ !
+  \item Si $N$ = multiple du nombre de voies + 1 : Accès pour $B$ optimal !
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{Padding pour la mémoire interlacée}
+
+\begin{lstlisting}
+ const int nbMemVoies = ...;
+ int padding_N = N+(nbMemVoies + 1 - (N%nbMemVoies))%nbMemVoies;
+ std::vector B(N*padding_N);
+ ...
+ for ( int i = 0; i < N; ++i )
+   for ( int j = 0; j < N; ++j ) {
+      B[i+j*padding_N] = A[j+i*N];
+   }
+\end{lstlisting}
+
+\begin{itemize}
+ \item Accès optimisé pour $A$ et $B$ !
+\end{itemize}
+
+\end{frame}
+
+\section{Utilisation des threads en C++ 2011}
+
+\begin{frame}[fragile]{Exécution et terminaison d'un thread}
+
+Plus simple qu'avec les posix threads :
+
+\begin{lstlisting}
+#include <iostream>
+#include <thread>
+
+// Cette fonction sera appelée par un thread
+void call_from_thread() {
+  std::cout << "Hello, World" << std::endl;
+}
+
+int main() {
+  // Exécution d'un thread
+  std::thread t1(call_from_thread);
+
+  //Join the thread with the main thread
+  t1.join();
+
+  return 0;
+}
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]{Exécution d'un thread avec une lambda fonction}
+
+L'utilisation des fonctions lambdas en C++ 2011 simplifie beaucoup
+l'utilisation des threads :
+
+\begin{lstlisting}
+#include <iostream>
+#include <thread>
+
+int main() {
+  // Exécution d'un thread
+  std::thread t1([] () { std::cout << "Hello, World" << std::endl; } );
+  //Join the thread with the main thread
+  t1.join();
+
+  return 0;
+}
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]{Exécution d'un groupe de threads}
+ 
+ \begin{lstlisting}
+static const int num_threads = 10;
+
+void call_from_thread() {
+  std::cout << "Hello, World" << std::endl;
+}
+
+int main() {
+  std::thread t[num_threads];
+  // Exécution d'un groupe de threads
+  for (int i = 0; i < num_threads; ++i) {
+    t[i] = std::thread(call_from_thread);
+  }
+  std::cout << "Launched from the main\n";
+  //Joint les threads avec le thread principal
+  for (int i = 0; i < num_threads; ++i) {
+    t[i].join();
+  }
+
+  return 0;
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Lancement d'un thread par CPU}
+\begin{lstlisting}
+int main(int argc, const char** argv) {
+  unsigned num_cpus = std::thread::hardware_concurrency();
+  std::cout << "Créer " << num_cpus << " threads\n";
+  // mutex permettant un accès ordonnées à std::cout pour les threads
+  std::mutex iomutex;
+  std::vector<std::thread> threads(num_cpus);
+  for (unsigned i = 0; i < num_cpus; ++i) {// Lambda function for thread
+    threads[i] = std::thread([&iomutex, i] ()  {
+      {
+// std::lock_guard permet de bloquer un mutex pendant la durée d'un bloc
+// d'instruction. Ici cela permet de bloquer le mutex uniquement durant
+// l'affichage à l'aide de std::cout
+        std::lock_guard<std::mutex> iolock(iomutex);
+        std::cout << "Thread #" << i << " is running\n";
+      }
+// On simule un travail important en mettant le thread un peu en pause
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    });
+  }
+  for (auto& t : threads) { t.join(); }
+  return 0;
+} 
+\end{lstlisting}
+\end{frame}
+
+\subsection{Gestion des conflits de données}
+
+\begin{frame}[fragile]{Section protégée par mutex}
+
+{\scriptsize
+\begin{itemize}
+ \item Pour des sections de code complexes;
+ \item Gestion preneuse de ressources CPU;
+\end{itemize}
+}
+
+\begin{lstlisting}
+std::map<std::string, std::string> g_pages;
+std::mutex g_pages_mutex;
+ 
+void save_page(const std::string &url) {// simulate a long page fetch
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::string result = "fake content";
+    g_pages_mutex.lock();
+    g_pages[url] = result;
+    g_pages_mutex.unlock();
+}
+int main() {
+    std::thread t1(save_page, "http://foo");
+    std::thread t2(save_page, "http://bar");
+    t1.join();  t2.join(); 
+    g_pages_mutex.lock();
+    for (const auto &pair : g_pages) 
+        std::cout << pair.first << " => " << pair.second << '\n';
+    g_pages_mutex.unlock();
+}
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]{Atomicité}
+
+\begin{itemize}
+ \item Pour des opérations simples sur des types de base;
+ \item Très léger en ressources CPU.
+\end{itemize}
+
+\begin{lstlisting}
+# include <atomic>
+void compLineMandelbrot( int i, std::vector<unsigned>& img  ) {
+// Calcul 1 ligne de l'image de mandelbrot...
+}
+void compMandelbrot( int W, int H ) {//  mandelbrot multi-threadé :
+  volatile std::atomic<int> num_line(-1);
+  std::vector<unsigned> img(W*H);
+  unsigned num_cpus = std::thread::hardware_concurrency();
+  std::vector<std::thread> threads;
+  for ( int c = 0; c < num_cpus-1; ++c ) {
+    threads.push_back(std::thread([W,H,maxIter,&num_line,&img]()
+      {while(num_line<H) {num_line ++;
+        compLineMandelbrot(W,H,maxIter,num_line,img); } } ) );
+  }
+  while ( num_line < H ) {num_line ++;compLineMandelbrot(num_line,img);}
+  for ( auto& t : threads ) t.join();
+}
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]{Cas d'interblocage avec les mutex}
+ 
+ \begin{lstlisting}
+  if ( pid == 0 ) {
+    S.lock();
+    Q.lock();
+    ...
+    Q.unlock();
+    S.unlock();
+  else if ( pid == 1 ) {
+    Q.lock();
+    S.lock();
+    ...
+    S.unlock();
+    Q.unlock();
+  }
+ \end{lstlisting}
+
+ Interblocage impossible avec l'atomicité !
+ 
+\end{frame}
+
+\section{OpenMP}
+
+\begin{frame}[fragile]{Vue d'ensemble d'OpenMP}
+ 
+ \begin{block}{Principe}
+  \begin{itemize}
+   \item Intégré aux compilateurs : option de compilation (\verb@-fopenmp@ ) + directives de compilation
+   \lstinline@# pragma omp @;
+   \item Définition de régions parallèles avec déclaration variables partagées/privées
+   \item Possibilité d'alterner entre régions séquentielles et parallèles.
+  \end{itemize}
+ \end{block}
+ 
+ \begin{block}{Région parallèle}
+  \begin{itemize}
+   \item Peut être une boucle parallèle : répartition statique ou dynamique
+   \item Plusieurs sections de code en parallèle;
+   \item Même section de code exécutée par plusieurs threads.
+   \item Contrôle du nombre de thread par directive ou variable d'environnement
+   \verb@OMP_NUM_THREADS@
+   \item Affinité via variable d'environnement : dépend du compilateur.
+  \end{itemize}
+ \end{block}
+\end{frame}
+
+\subsection{Régions parallèles}
+
+\begin{frame}[fragile]{Déclaration d'une région parallèle}
+ \begin{lstlisting}
+  # include <iostream>
+  # include <omp.h>
+  
+  int main() {
+    float a;
+    int p;
+    a = 92290; p = 0;
+  # pragma omp parallel
+    { // Début de la région parallèle
+      p = omp_in_parallel();
+      std::cout << " a = " << a << " et p = " << p << std::endl;
+    }
+    return 0;
+  }
+ \end{lstlisting}
+ 
+ \begin{block}{Sortie du programme}
+  \begin{semiverbatim}
+   a = 92290 et p = 1
+   a = 92290 et p = 1
+  \end{semiverbatim}
+  Par défaut, une variable est partagée.
+ \end{block} 
+\end{frame}
+
+\begin{frame}[fragile]{Déclaration d'une région parallèle}
+ \begin{lstlisting}
+  # include <iostream>
+  # include <omp.h>
+  
+  int main() {
+    float a = 92290;
+  # pragma omp parallel default(none) private(a) shared(std::cout)
+    { // Début de la région parallèle
+      a = a + 290;
+      std::cout << " a = " << a << std::endl;
+    }
+    return 0;
+  }
+ \end{lstlisting}
+ 
+ \begin{block}{Sortie du programme}
+  \begin{semiverbatim}
+   a = 290
+   a = 290
+  \end{semiverbatim}
+ \end{block} 
+\end{frame}
+
+\begin{frame}[fragile]{Déclaration d'une région parallèle}
+ \begin{lstlisting}
+  # include <iostream>
+  # include <omp.h>
+  
+  int main() {
+    float a = 92000;
+  # pragma omp parallel default(none) firstprivate(a) shared(std::cout)
+    { // Début de la région parallèle
+      a = a + 290;
+      std::cout << " a = " << a << std::endl;
+    }
+    return 0;
+  }
+ \end{lstlisting}
+ 
+ \begin{block}{Sortie du programme}
+  \begin{semiverbatim}
+   a = 92290
+   a = 92290
+  \end{semiverbatim}
+ \end{block} 
+\end{frame}
+
+\begin{frame}[fragile]{\'Etendue d'une région parallèle}
+ 
+\begin{lstlisting}
+# include <iostream>
+# include <omp.h>
+
+void function() {
+    double a = 92290;
+    a += omp_get_thread_num();
+    std::cout << "a = " << a << std::endl;
+}
+int main() {
+# pragma omp parallel
+{
+  function();
+}
+  return 0;
+}
+\end{lstlisting}
+
+\begin{block}{Sortie du programme}
+\begin{semiverbatim}
+a = 92290
+a = 92291
+\end{semiverbatim}
+\end{block} 
+\end{frame}
+
+\begin{frame}[fragile]{\'Etendue d'une région parallèle}
+
+\begin{lstlisting}
+void function(double& a, double& b) {
+    b = a + omp_get_thread_num();
+    std::cout << "b = " << b << std::endl;
+}
+
+int main()
+{
+  double a = 92290, b;
+# pragma omp parallel shared(a) private(b)
+  {
+      function(a,b);
+  }
+  return 0;
+}
+\end{lstlisting}
+
+\begin{block}{Sortie du programme}
+\begin{semiverbatim}
+b = 92290
+b = 92291
+\end{semiverbatim}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Allocation dynamique et région parallèle}
+\begin{lstlisting}
+# include <iostream>
+# include <omp.h>
+
+int main() {
+    int nbTaches, i, deb, fin, rang, n = 1024;
+    double* a;
+#   pragma omp parallel
+    { nbTaches = omp_get_num_threads(); }
+    a = new double[n*nbTaches];    
+#   pragma omp parallel default(none) private(deb,fin,rang,i) \
+                        shared(a,n,std::cout)
+    {
+        rang = omp_get_thread_num();
+        deb  = rang*n; fin = (rang+1)*n-1;
+        for ( i = deb; i <= fin; i++ ) a[i] = 92290. + double(i);
+        std::cout << "Rang : "<<rang<< " A[" << deb << "] = " << a[deb]
+                  << ", A[" << fin << "] = " << a[fin] << std::endl;
+    }
+    delete [] a;
+    return 0;
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Réduction en OpenMP}
+
+\begin{lstlisting}
+ int main() {
+    int s = 0;
+#   pragma omp parallel default(none) reduction(+:s)
+    {
+        s = omp_get_thread_num()+1;
+    }
+    std::cout << "s = " << s << std::endl;
+    return EXIT_SUCCESS;
+}
+\end{lstlisting}
+
+Cette application affichera \verb@s = 3@ sur deux threads.
+
+\end{frame}
+
+\subsection{Division du travail}
+
+\begin{frame}[fragile]{Division des boucles parallèles}
+
+\begin{block}{Parallélisation boucle}
+ \begin{itemize}
+  \item Se fait à l'aide d'une clause \verb@for@;
+  \item Boucles infinies non parallélisables ( \lstinline@do ... while@ );
+  \item Trois modes de parallélisation via \verb@schedule@ : Statique, dynamique
+  ou guidé ( non abordé ici ).
+  \item Par défaut, répartition statique
+  \item Synchronisation globale à la fin de la boucle, sauf si clause \verb@nowait@ spécifié.
+ \end{itemize}
+\end{block}
+\end{frame}
+\begin{frame}[fragile]{Division des boucles parallèles}
+
+Parallélisation de Mandelbrot avec équilibre des tâches :
+
+\begin{lstlisting}
+/* Calcul de l'ensemble de Mandelbrot en OpenMP */
+std::vector<int> compMandelbrot( int W, int H, int maxIter ) {
+    std::vector<int> img(W*H);
+#   pragma omp parallel for schedule(dynamic)
+    for ( int i  = 0; i < H; ++i )
+        compLineMandelbrot( W,H, maxIter, i, img );
+  return img;
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Parallélisation boucles avec réduction}
+\begin{lstlisting}
+  const int n = 5;
+  int i, s = 0, p = 1, r = 1;
+  
+# pragma omp parallel for reduction(+:s) reduction(*:p,r)
+  for ( i = 1; i <= n; ++i ) {
+      s += 1;
+      p *= 2;
+      r *= 3;
+  }
+  std::cout << "s = "<<s<< ", p = " <<p<< ", r = " <<r<< std::endl;
+\end{lstlisting}
+
+ce qui affichera à l'exécution :
+
+\begin{verbatim}
+s = 5, p = 32, r = 243;
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Sections parallèles}
+\begin{lstlisting}
+  # pragma omp parallel private(i)
+  {
+  #  pragma omp sections nowait
+    {
+  #     pragma omp section 
+        for (int i = 0; i < 10; ++i)
+          std::cout << "Thread one ! --> " << i << std::endl;
+  #     pragma omp section
+        for (int i = -10; i < 0; i += 2)
+          std::cout << "Thread two ! --> " << i << std::endl;
+      }
+  }
+\end{lstlisting}
+\end{frame}
+
+\subsection{Synchronisation}
+
+\begin{frame}[fragile]{clause single}
+ 
+Section uniquement exécutée que par un thread...
+ 
+\begin{lstlisting}
+\begin{lstlisting}
+#pragma omp parallel default(none) private(a,rang)
+{
+  a = 92290.;
+# pragma omp single
+  {
+      a = -92290.;
+  }
+  rang = omp_get_thread_num();
+  std::cout << "rang " << rang << " : a = " << a << std::endl;
+}
+\end{lstlisting}
+
+Sur deux threads :
+\begin{verbatim}
+rang 0 : a = 92290.
+rang 1 : a = -92290.
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{clause master}
+
+Section uniquement exécutée par le thread principal :
+\begin{lstlisting}
+#pragma omp parallel default(none) private(a,rang)
+{
+  a = 92290.;
+# pragma omp master
+  {
+      a = -92290.;
+  }
+  rang = omp_get_thread_num();
+  std::cout << "rang " << rang << " : a = " << a << std::endl;
+}
+\end{lstlisting}
+
+\begin{verbatim}
+rang 0 : a = -92290.
+rang 1 : a = 92290.
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Synchronisation}
+ 
+\begin{lstlisting}
+  double *a, *b;
+  int i, n=5;
+# pragma omp parallel
+  {
+# pragma omp single
+    { a = new double[n]; b = new double[n]; }
+# pragma omp master
+    { for (i = 0; i < n; i++)
+        a[i] = (i+1)/2.; }
+# pragma omp barrier
+# pragma for schedule(static)
+    for (i=0; i < n; i++) b[i] = 2.*a[i];
+# pragma omp single nowait
+    { delete [] a; }
+  }
+  printf("B equal : ");
+  for (i = 0; i < n; i++) printf("%7.5lg\t",b[i]);
+  printf("\n");
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]{Atomicité et section critique}
+
+{\scriptsize
+Même notions que pour les threads :
+
+Atomicité :
+ \begin{lstlisting}
+  int counter = 100, rank;
+# pragma omp parallel private(rank)
+  {
+    rank = omp_get_thread_num();
+#   pragma omp atomic
+    counter += 1;    
+    printf("Rank : %d, counter = %d\n",rank,counter);
+  }
+  printf("Final counter : %d\n",counter);
+\end{lstlisting}
+
+Section critique :
+\begin{lstlisting}
+  int s = 0,p = 1;
+# pragma omp parallel
+  {
+#   pragma omp critical
+    {
+      s += 1; p *= 2;
+    }
+  }
+  printf ("s = %d, p = %d\n", s, p);
+\end{lstlisting}
+}
+
+\end{frame}
+
+\section{Autres outils existant}
+
+\subsection{Threading Building BLocks (TBB)}
+
+\begin{frame}[fragile]{Vue d'ensemble}
+
+\begin{itemize}
+ \item Bibliothèque template C++ mise en {\oe}uvre par Intel;
+ \item License apache;
+ \item Boucles parallèles
+ \item Algorithmes de réduction;
+ \item Gestion graphe de tâches en parallèle;
+ \item Gestion concurrence entre threads;
+ \item Politique d'allocation pour optimisation cache en multithread;
+ \item Conteneurs ( à la STL ) supportant la concurrence.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{Exemple de code TBB}
+ 
+ En reprenant notre éternel Mandelbrot :
+
+\begin{lstlisting}
+class CompMandelbrot {
+public:
+  CompMandelbrot( unsigned W, unsigned H, int maxIter, int* pt_img ) :
+    m_W(W), m_H(H), m_maxIter(maxIter), m_pt_img(pt_img)  {}  
+  void operator()( const tbb::blocked_range<int>& r ) const {
+    double scaleX = 3./(m_W-1);
+    double scaleY = 2.25/(m_H-1);
+    for ( int i = r.begin(); i != r.end(); ++i ) {
+       ...
+    } }
+private:
+  unsigned m_W, m_H, m_maxIter;
+  int* m_pt_img;
+};
+std::vector<int> compMandelbrot( int W, int H, int maxIter ) {
+  std::vector<int> img(W*H);
+  tbb::parallel_for(tbb::blocked_range<int>(0,H), 
+              CompMandelbrot(W,H,maxIter,(int*)img.data()));
+  return img;
+} 
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]{C++ 2017}
+ \begin{block}{Aperçu}
+  \begin{itemize}
+   \item Parallélisation d'algorithmes de la STL;
+   \item Dans la norme, pas besoin d'outils externes !
+  \end{itemize}
+
+ \end{block}
+
+\begin{lstlisting}
+std::vector<int> v = ...
+std::sort(vec.begin(), vec.end());// standard sequential sort
+using namespace std::experimental::parallel;
+sort(seq, v.begin(), v.end());// explicitly sequential sort
+sort(par, v.begin(), v.end());// permitting parallel execution
+sort(vec, v.begin(), v.end());// permitting vectorization as well
+// sort with dynamically-selected execution
+size_t threshold = ...
+execution_policy exec = seq;
+if(v.size() > threshold)
+{
+exec = par;
+}
+sort(exec, v.begin(), v.end());
+\end{lstlisting}
+\end{frame}
+
+\end{document}

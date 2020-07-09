@@ -1,0 +1,1291 @@
+\documentclass[fleqn,11pt]{article}
+\usepackage[top=3cm,bottom=3cm,left=3cm,right=3cm,headsep=10pt,a4paper]{geometry} % Page margins
+
+\usepackage{graphicx} % Required for including pictures
+\graphicspath{{Pictures/}} % Specifies the directory where pictures are stored
+
+\usepackage{tikz} % Required for drawing custom shapes
+\usepackage{dsfont}
+\usepackage{enumitem} % Customize lists
+\setlist{nolistsep} % Reduce spacing between bullet points and numbered lists
+
+\usepackage{booktabs} % Required for nicer horizontal rules in tables
+\usepackage{xcolor} % Required for specifying colors by name
+\definecolor{ocre}{RGB}{243,102,25} % Define the orange color used for highlighting throughout the book
+\usepackage{microtype} % Slightly tweak font spacing for aesthetics
+%\usepackage[utf8]{inputenc} % Required for including letters with accents
+%\usepackage[T1]{fontenc} % Use 8-bit encoding that has 256 glyphs
+\usepackage{framed}
+
+\usepackage{calc} % For simpler calculation - used for spacing the index letter headings correctly
+\usepackage{makeidx} % Required to make an index
+\makeindex % Tells LaTeX to create the files required for indexing
+\usepackage[many]{tcolorbox}
+\usepackage{listings}
+\usepackage{smartdiagram}
+\usetikzlibrary{shadows, arrows, decorations.pathmorphing, fadings, shapes.arrows, positioning, calc, shapes, fit, matrix}
+\usepackage{polyglossia}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\definecolor{lightblue}{RGB}{0,200,255} 
+\definecolor{paper}{RGB}{239,227,157}
+
+\pgfdeclarelayer{background}
+\pgfdeclarelayer{foreground}
+\pgfsetlayers{background,main,foreground}
+
+\lstset{%
+  basicstyle=\footnotesize,
+  frame=single,
+  keywordstyle=\color{blue},
+  language=C++,
+  commentstyle=\color{red},
+  stringstyle=\color{brown},
+  keepspaces=true,
+  showspaces=false,
+  tabsize=2
+}
+
+\title{Programmation parallèle sur mémoire distribuée}
+\author{Juvigny Xavier}
+\date{Novembre 2019}
+
+\newtheorem{prop}{Propriétés }
+\newtheorem{remark}{Remarque }
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{Architecture des calculateurs à mémoire distribuée}
+
+L'efficacité d'une machine multi--cœurs dépend de l'organisation de sa mémoire qui, pour être efficace demande une architecture complexe 
+et onéreuse dont le coût est sur-linéaire au nombre de cœurs. Afin d'obtenir un calculateur performant sans être prohibitif, 
+chaque unité de calcul ( en général multi--cœurs ) possède  sa propre mémoire vive. Un ensemble formé d'unités de calcul et 
+d'une mémoire vive s'appelle un \textbf{nœud de calcul} sur les machines distribuées. 
+
+Ces différents n{\oe}uds de calcul échangent des données au travers d'un bus spécialisé ou  plus souvent au travers d'un réseau de type 
+Gigabit. On parle alors d'un calculateur \textsl{à mémoire distribuée}. Ce type de calculateur a un coût de fabrication linéaire en 
+fonction du nombre d'unités de calcul sur le réseau du calculateur. 
+
+La programmation de ces calculateurs demande une mise en œuvre spécifique et fréquemment des algorithmes spécifiques permettant d'exploiter efficacement la capacité de calcul de la machine.
+
+Ce type de calculateur permet d'exploiter simultanément plusieurs dizaines de milliers d'unités de calcul. Cependant, la lenteur relative des réseaux ou des bus ainsi que le ''degré de parallélisme'' de l'algorithme employé limitent la rapidité de traitement des donnees
+
+\begin{figure}[h]
+\begin{center}
+\begin{tikzpicture}
+\node[draw,fill=blue!50!white, drop shadow, rounded corners] (Ram1) {Mémoire vive};
+\node[below=2ex of Ram1.south] (B1) {};
+\node[left=1em of B1.west,draw,fill=red!55] (U1) {UC};
+\node[right=1em of B1.east,draw,fill=red!55] (U2) {UC};
+\draw[blue] (Ram1) -- (B1.center);
+\draw[blue] (B1.center) -- (U1);
+\draw[blue] (B1.center) -- (U2);
+
+\node[draw,fill=blue!50!white, drop shadow, rounded corners,left=10em of Ram1.east] (Ram2) {Mémoire vive};
+\node[below=2ex of Ram2.south] (B2) {};
+\node[left=1em of B2.west,draw,fill=red!55] (U3) {UC};
+\node[right=1em of B2.east,draw,fill=red!55] (U4) {UC};
+\draw[blue] (Ram2) -- (B2.center);
+\draw[blue] (B2.center) -- (U3);
+\draw[blue] (B2.center) -- (U4);
+
+\node[draw,fill=blue!50!white, drop shadow, rounded corners,left=10em of Ram2.east] (Ram3) {Mémoire vive};
+\node[below=2ex of Ram3.south] (B3) {};
+\node[left=1em of B3.west,draw,fill=red!55] (U5) {UC};
+\node[right=1em of B3.east,draw,fill=red!55] (U6) {UC};
+\draw[blue] (Ram3) -- (B3.center);
+\draw[blue] (B3.center) -- (U5);
+\draw[blue] (B3.center) -- (U6);
+
+\node[above=2ex of Ram1.north] (R1) {};
+\node[above=2ex of Ram2.north] (R2) {};
+\node[above=2ex of Ram3.north] (R3) {};
+\node[right=1em of R1.east] (R0){};
+\node[left=1em of R3.west] (R4) {};
+\draw[thick,red] (R0.east) -- (R1.center) -- (R2.center) node[above] {Réseau}-- (R3.center) -- (R4.west);
+\draw[thick,red] (Ram1) -- (R1.center);
+\draw[thick,red] (Ram2) -- (R2.center);
+\draw[thick,red] (Ram3) -- (R3.center);
+\end{tikzpicture}
+\end{center}
+\caption{Architecture calculateur à mémoire distribuée}
+\label{fig:archmemdistrib}
+\end{figure}
+
+Les réseaux connectant les différents n{\oe}uds de calcul offrent des topologies variées. 
+Il peut être important d'avoir en tête la topologie du calculateur employé. 
+En effet, les données échangées via le réseau transiteront selon la topologie du réseau 
+via d'autres n{\oe}uds de calcul, ce qui ralentira les échanges de données en fonction 
+du nombre d'unités de calcul intermédiaires par lesquelles les données transiteront. 
+Pour calculer le nombre maximal de nœuds intermédiaires,  on définit pour un réseau la 
+distance entre deux nœuds et son diamètre :
+
+%\begin{theorem}
+On appelle \textbf{distance entre deux nœuds} sur un réseau donné le minimum de nœuds
+intermédiaires par lesquels doivent transiter des données echangées entre les deux
+nœuds.
+%\end{theorem}
+
+On appelle \textbf{diamétre d'un réseau} la distance maximale entre
+deux nœuds du réseau. 
+
+Pour la commodité de l'exposé, et en adéquation avec la vue programmeur
+fournie par les bibliothèques de calcul parallèle distribuée, on numérote
+chacun des $N$ nœuds de calcul de façon unique à l'aide d'un nombre entre
+0 et $N-1$.
+
+\subsection{Topologie linéaire}
+
+Les $N$ nœuds de calcul sont reliés de sorte qu'on peut trouver une numérotation
+des nœuds de calcul tel qu'un nœud $i$ est seulement lié directement au
+nœud $i-1$ ( si $ i > 0$ ) et au nœud $i+1$ ( si $i < N-1$ ).
+
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}
+\node[text width=2.2em,draw,fill=yellow,drop shadow, text centered] (N0) {\small Nœud 0};
+\foreach \x/\p in {1/0,2/1,3/2} {
+\node[text width=2.2em, right=2em of N\p.east,draw,fill=yellow,drop shadow, text centered] (N\x) {\small Nœud \x};
+\draw[thick,red] (N\p) -- (N\x);
+}
+\end{tikzpicture}
+\end{center}
+\caption{Réseau Linéaire}
+\label{fig:reslin}
+\end{figure}
+
+
+Le diamètre de ce réseau est $N-1$.
+
+\subsection{Topologie anneau}
+
+La topologie de ce réseau est similaire à celui d'un réseau linéaire.
+Seule différence notable, le nœud 0 est relié au nœud $N-1$.
+
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}
+\node[text width=2.2em,draw,fill=yellow,drop shadow, text centered] (N0) {\small Nœud 0};
+\foreach \x/\p in {1/0,2/1,3/2} {
+\node[text width=2.2em, right=2em of N\p.east,draw,fill=yellow,drop shadow, text centered] (N\x) {\small Nœud \x};
+\draw[thick,red] (N\p) -- (N\x);
+}
+\node[above=1em of N0.north] (L) {};
+\node[above=1em of N3.north] (R) {};
+\draw[thick,red] (N0) -- (L.center) -| (R.center) -- (N3);
+\end{tikzpicture}
+\end{center}
+\label{fig:resanneau}
+\caption{Réseau en anneau}
+\end{figure}
+
+Le réseau étant bidirectionnel, le diamètre de ce réseau est $\frac{N}{2}$ si le nombre
+de nœud $N$ est pair, $\frac{N-1}{2}$ sinon.
+
+\subsection{Topologie grille}
+
+Le réseau connectant les $N=W\times H$ nœuds est topologiquement équivalent à
+une grille de $W\times H$ nœuds.
+
+0
+On voit, en considérant la communication du premier n{\oe}ud avec le dernier
+n{\oe}ud que le diamètre d'un réseau sur grille est égal à $W+H-2$.
+
+\subsection{Topologie hyper cube}
+
+La topologie hyper cube est une topologie telle que la connection des n{\oe}uds de calcul
+est équivalente à celle reliant les sommets d'un hyper cube de dimension $n$.
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}[c]{0.46\textwidth}
+\centering
+\begin{tikzpicture}
+\node[text width=1em, fill=yellow, drop shadow]  (N0) {\scriptsize $N_{0}$};
+\end{tikzpicture}
+\caption{$\mathcal{C}_{0}$ : hypercube de dimension 0}\label{fig:HypCub0}
+\end{subfigure}
+\qquad
+\begin{subfigure}[c]{0.46\textwidth}
+\centering
+\begin{tikzpicture}
+\node[text width=1em, fill=yellow, drop shadow]  (N0) {\scriptsize $N_{0}$};
+\node[right=2em of N0.east, text width=1em, fill=yellow, drop shadow] (N1) {\scriptsize $N_{1}$};
+\draw[thick,red] (N0) -- (N1);
+\end{tikzpicture}
+\caption{$\mathcal{C}_{1}$ : hypercube de dimension 1}\label{fig:HypCub1}
+\end{subfigure}
+
+\begin{subfigure}[c]{0.46\textwidth}
+\centering
+\begin{tikzpicture}
+\node[text width=1em, fill=yellow, drop shadow]  (N0) {\scriptsize $N_{00}$};
+\node[right=2em of N0.east, text width=1em, fill=yellow, drop shadow] (N1) {\scriptsize $N_{01}$};
+\node[text width=1em, fill=yellow!76!red, drop shadow, above=4ex of N0.north] (N2) {\scriptsize $N_{10}$};
+\node[right=2em of N2.east, text width=1em, fill=yellow!76!red, drop shadow] (N3) {\scriptsize $N_{11}$};
+\draw[thick,red](N0) -- (N1);
+\draw[thick,red](N0) -- (N2);
+\draw[thick,red](N2) -- (N3);
+\draw[thick,red](N1) -- (N3);
+\end{tikzpicture}
+\caption{$\mathcal{C}_{2}$ : hypercube de dimension 2}\label{fig:HypCub2}
+\end{subfigure}
+\qquad
+\begin{subfigure}[c]{0.46\textwidth}
+\centering
+\begin{tikzpicture}
+\node[text width=2em, fill=yellow, drop shadow]  (N0) {\scriptsize $N_{000}$};
+\node[right=3em of N0.east, text width=2em, fill=yellow, drop shadow] (N1) {\scriptsize $N_{001}$};
+\node[text width=2em, fill=yellow!76!red, drop shadow, above=4ex of N0.north] (N2) {\scriptsize $N_{010}$};
+\node[right=3em of N2.east, text width=2em, fill=yellow!76!red, drop shadow] (N3) {\scriptsize $N_{011}$};
+\node[text width=2em, fill=yellow!50!white, drop shadow, above = 8ex of N0.north east, anchor=west]  (N4) {\scriptsize $N_{100}$};
+\node[right=3em of N4.east, text width=2em, fill=yellow!50!white, drop shadow] (N5) {\scriptsize $N_{101}$};
+\node[text width=2em, fill=yellow!76!orange, drop shadow, above=4ex of N4.north] (N6) {\scriptsize $N_{110}$};
+\node[right=3em of N6.east, text width=2em, fill=yellow!76!orange, drop shadow] (N7) {\scriptsize $N_{111}$};
+\draw[thick,red!50!blue](N0) -- (N4);
+\draw[thick,red!50!blue](N1) -- (N5);
+\draw[thick,red](N0) -- (N1);
+\draw[thick,red](N0) -- (N2);
+\draw[thick,red](N2) -- (N3);
+\draw[thick,red](N1) -- (N3);
+\draw[thick,orange](N4) -- (N5);
+\draw[thick,orange](N4) -- (N6);
+\draw[thick,orange](N6) -- (N7);
+\draw[thick,orange](N5) -- (N7);
+\draw[thick,red!50!blue](N2) -- (N6);
+\draw[thick,red!50!blue](N3) -- (N7);
+\end{tikzpicture}
+\caption{$\mathcal{C}_{3}$ : hypercube de dimension 3}\label{fig:HypCub3}
+\end{subfigure}
+
+\begin{subfigure}[c]{0.46\textwidth}
+\centering
+\begin{tikzpicture}
+\node[text width=2em, fill=yellow, drop shadow]  (N0) {\scriptsize $N_{0000}$};
+\node[right=3em of N0.east, text width=2em, fill=yellow, drop shadow] (N1) {\scriptsize $N_{0001}$};
+\node[text width=2em, fill=yellow!76!red, drop shadow, above=4ex of N0.north] (N2) {\scriptsize $N_{0010}$};
+\node[right=3em of N2.east, text width=2em, fill=yellow!76!red, drop shadow] (N3) {\scriptsize $N_{0011}$};
+\node[text width=2em, fill=yellow!50!white, drop shadow, above = 8ex of N0.north east, anchor=west]  (N4) {\scriptsize $N_{0100}$};
+\node[right=3em of N4.east, text width=2em, fill=yellow!50!white, drop shadow] (N5) {\scriptsize $N_{0101}$};
+\node[text width=2em, fill=yellow!76!orange, drop shadow, above=4ex of N4.north] (N6) {\scriptsize $N_{0110}$};
+\node[right=3em of N6.east, text width=2em, fill=yellow!76!orange, drop shadow] (N7) {\scriptsize $N_{0111}$};
+
+\node[text width=2em, fill=cyan, drop shadow, above left = 16ex of N0.north west]  (N8) {\scriptsize $N_{1000}$};
+\node[right=3em of N8.east, text width=2em, fill=cyan, drop shadow] (N9) {\scriptsize $N_{1001}$};
+\node[text width=2em, fill=cyan!76!green, drop shadow, above=4ex of N8.north] (NA) {\scriptsize $N_{1010}$};
+\node[right=3em of NA.east, text width=2em, fill=cyan!76!green, drop shadow] (NB) {\scriptsize $N_{1011}$};
+\node[text width=2em, fill=cyan!50!white, drop shadow, above = 8ex of N8.north east, anchor=west]  (NC) {\scriptsize $N_{1100}$};
+\node[right=3em of NC.east, text width=2em, fill=cyan!50!white, drop shadow] (ND) {\scriptsize $N_{1101}$};
+\node[text width=2em, fill=cyan!76!yellow, drop shadow, above=4ex of NC.north] (NE) {\scriptsize $N_{1110}$};
+\node[right=3em of NE.east, text width=2em, fill=cyan!76!yellow, drop shadow] (NF) {\scriptsize $N_{1111}$};
+\draw[thick,red!50!blue](N0) -- (N4);
+\draw[thick,red!50!blue](N1) -- (N5);
+\draw[thick,red](N0) -- (N1);
+\draw[thick,red](N0) -- (N2);
+\draw[thick,red](N2) -- (N3);
+\draw[thick,red](N1) -- (N3);
+\draw[thick,orange](N4) -- (N5);
+\draw[thick,orange](N4) -- (N6);
+\draw[thick,orange](N6) -- (N7);
+\draw[thick,orange](N5) -- (N7);
+\draw[thick,red!50!blue](N2) -- (N6);
+\draw[thick,red!50!blue](N3) -- (N7);
+
+\draw[thick,red!50!blue](N8) -- (NC);
+\draw[thick,red!50!blue](N9) -- (ND);
+\draw[thick,red](N8) -- (N9);
+\draw[thick,red](N8) -- (NA);
+\draw[thick,red](NA) -- (NB);
+\draw[thick,red](N9) -- (NB);
+\draw[thick,orange](NC) -- (ND);
+\draw[thick,orange](NC) -- (NE);
+\draw[thick,orange](NE) -- (NF);
+\draw[thick,orange](ND) -- (NF);
+\draw[thick,red!50!blue](NA) -- (NE);
+\draw[thick,red!50!blue](NB) -- (NF);
+
+\draw[green] (N0) -- (N8);
+\draw[green] (N1) -- (N9);
+\draw[green!75] (N2) -- (NA);
+\draw[green!75] (N3) -- (NB);
+\draw[green!50] (N4) -- (NC);
+\draw[green!50] (N5) -- (ND);
+\draw[green!25] (N6) -- (NE);
+\draw[green!25] (N7) -- (NF);
+\end{tikzpicture}
+\caption{$\mathcal{C}_{4}$ : hypercube de dimension 4}\label{fig:HypCub4}
+\end{subfigure}
+\caption{Réseau hyper cube de dimensions 0 à 4. Les nœuds sont numérotés en binaire selon la numérotation de Gray.}
+\end{figure}
+
+La construction d'un hypercube de dimension $n$ se fait de façon itérative à partir de l'hypercube de
+dimension 1 ( l'hypercube de dimension 0 étant un cas à part, constitué d'un et un seul nœud de calcul ) :
+
+\begin{itemize}
+\item L'hypercube $\mathcal{C}_{1}$ de dimension 1 est constitué de deux nœuds numérotés 0 et 1 
+reliés par une connexion directe ( voir figure \ref{fig:HypCub1} );
+\item Pour passer d'un hypercube de dimension $n-1$ à un hypercube de dimension $n$ ( $n>1$ ), on fabrique
+une copie du réseau hypercube de dimension $n-1$ en rajoutant ( en binaire ) un 0 à gauche dans la numérotation
+des nœuds d'origine et un 1 à gauche dans la numérotation des nœuds copiés. On relie ensuite par une
+connexion directe chaque nœud d'origine avec son équivalent dans la copie.
+\end{itemize}
+
+Par exemple, pour construire un hypercube $\mathcal{C}_{2}$ de dimension 2, 
+on démarre de l'hypercube $\mathcal{C}_{1}$ dont on copie les sommets en rajoutant
+un bit à gauche de la numérotation binaire, valant 0 pour le graphe original et
+1 pour la copie. On obtient ainsi quatres nœuds numérotés $00,01,10$ et $11$
+reliés comme dans la figure \ref{fig:HypCub2}.
+
+Pour les dimensions supérieurs, on reitère la procédure pour obtenir des hypercubes de dimension
+3, 4 ou supérieur, comme sur les figures \ref{fig:HypCub3} et \ref{fig:HypCub4}.
+
+La numérotation obtenue avec la construction des hypercubes se nomme le \textsl{code Gray} ( sur $n$
+bits, $n$ étant la dimension de l'hypercube ). Cette numérotation possède de nombreuses propriétés
+intéressantes, dont la propriété suivante :
+
+\begin{prop}
+La distance entre deux nœuds $i$ et $j$ dans un hypercube de dimension $n$ est le nombre de bits différents
+dans leur numérotation binaire.
+\end{prop}
+
+Par exemple, la distance entre les nœuds ( numérotés en binaire ) $011001$ et $110011$ est de 3 ( trois bits
+de différents entre les deux numéros ).
+
+On en déduit directement le diamètre du réseau hypercube :
+
+\begin{prop}
+Un réseau hypercube de dimension $n$ ( contenant $2^{n}$ nœuds de calcul ) a un diamètre de $n$.
+\end{prop}
+
+Les réseaux hypercubes sont des réseaux proposant des connections très riches,
+et permettant d'obtenir de bonnes performances en terme d'échanges de données
+et de résistance aux pannes réseaux sans pour autant avoir un coût trop élevé 
+( cau contraire d'un graphe complet où chaque nœud est relié à tous les autres ).
+
+\section{Les différents modèles de programmation parallèle}
+
+À l'instar du classement architectural des machines parallèles, il existe
+un classement software de la programmation parallèle.
+
+\begin{itemize}
+\item \textbf{SPSD} ({\bf S}imple {\bf P}rogram {\bf S}imple {\bf D}ata )
+
+C'est la programmation classique séquentielle où on ne traite qu'une seule
+donnée à la fois à l'aide d'un seul programme. 
+
+\item \textbf{SPMD} ( {\bf S}imple {\bf P}rogram {\bf Multiple} {\bf Data} )
+
+On exécute le même programme, ou on exécute la même fonction dans le cas des threads,
+sur plusieurs données simultanément. Attention, cela est différent d'une programmation
+sur machine SIMD puisque les différents processus peuvent ne pas exécuter les mêmes
+instructions. C'est de loin le modèle de programmation le plus utilisé pour les
+algorithmes parallèles sur machines à mémoire distribuée.
+
+\item \textbf{MPMD} ( {\bf M}ultiple {\bf P}rogram {\bf M}ultiple {\bf D}ata )
+
+Plusieurs programmes ( ou plusieurs fonctions ) sont exécutés simultanément
+sur plusieurs données. Dans le cadre de la programmation partagée, cela peut être
+utilisé pour programmer une interface graphique exécutée sur un thread tandis
+que les autres threads effectuent des calculs par exemple, ou bien en mémoire
+distribuée pour faire un client/serveur.
+\end{itemize}
+
+\begin{remark}
+Il ne faut surtout pas confondre le SIMD qui est une contrainte hardware avec
+le SPMD qui est un modèle de programmation ! 
+
+Remarquons par ailleurs que le modèle de programmation MPMD peut toujours 
+être ramener à un modèle SPMD en écrivant un programme unique :
+
+\begin{lstlisting}[language=C++]
+if ( processus == 0 )
+  f1 ();
+if ( processus == 1 )
+  f2 ();
+...
+\end{lstlisting} 
+\end{remark}
+
+\section{Programmation parallèle sur machines à mémoire distribuée}
+
+Dans ce modèle de programmation, plusieurs processus font tourner 
+simultanément des programmes,
+identiques ou non, possédant chacun leur propre espace mémoire privé ( en général
+une mémoire physique différente mais on peut très bien avoir des processus qui
+se partagent une même mémoire physique ).
+
+Il est impossible à un processus d'aller lire ou écrire sur l'espace mémoire d'un autre
+processus. Les processus doivent donc pouvoir communiquer à l'aide de messages pour
+s'échanger des données.
+
+\subsection{Contexte et communication point à point}
+
+Pour cela, un processus devant envoyer un message à un autre processus doit
+pouvoir désigner le processus destinataire d'une manière ou d'une autre.
+On doit donc étiqueter chaque processus à l'aide d'un identifiant unique
+avant toute opération parallèle. Il faut donc initialiser un contexte
+global dupliqué sur chaque processus permettant d'attribuer à chacun un identifiant
+unique, en général un entier compris entre zéro et le nombre 
+de processus utilisés moins un.
+
+Il se peut également qu'un processus reçoit des données provenant de plusieurs
+autre processus ef il est alors nécessaire de distinguer la provenance de ces messages.
+Il est donc nécessaire de pouvoir identifier l'expéditeur du message. De plus, il
+arrive souvent qu'un processus envoi plusieurs messages à un même destinataire. Or
+sur le réseau internet, le protocole ne garantit pas que l'ordre d'envoi
+des messages soit respecté à la réception. Pour identifier les messages provenant
+d'un même expéditeur, il est nécessaire de rajouter une étiquette à chaque message
+envoyé.
+
+Enfin, en plus des données et de leur quantité, il est important dans le cas où
+on exécute un programme parallèle sur un ensemble de machines hétérogènes
+de préciser le type des données échangées. En effet, certains types de scalaires
+sont représentés de manière différents selon les processeurs employés. Ainsi,
+sur les processeurs Intel, les entiers sont représentés en little endian ( les octets
+de poids faibles en premiers puis ceux de poids croissants ) tandis que sur Arm
+les entiers sont représentés en big endian ( les octets de poids forts en premiers
+puus ceux de poids décroissants ). Il faut donc préciser le type de données qu'on
+envoi afin qu'une éventuelle conversion soit faite.
+
+En résumé :
+\begin{enumerate}
+\item Chaque processus lancé en début d'une session d'exécution parallèle se voit
+attribué à l'initialisation du contexte un identifiant unique ( en général un entier );
+\item Un message dans un contexte calcul distribué doit contenir : 
+\begin{itemize}
+\item L'identifiant de l'expéditeur ou du destinataire ( selon qu'on reçoit ou on
+envoi );
+\item Un identifiant pour le message;
+\item Le type des données envoyées/reçues;
+\item La quantité de données à envoyer;
+\item Les données elles même.
+\end{itemize}
+\end{enumerate}
+
+\subsection{Protocole des envois et des réceptions}
+
+Un échange de données entre deux processus se décompose en deux phases :
+\begin{enumerate}
+\item Une phase de "dialogue" entre les deux processus pour convenir d'un
+protocole commun entre les deux machines pour échanger des données. Cette
+première phase a un coût constant quelque soit la taille du message;
+\item La phase d'échange proprement dite. Le coût de l'échange est linéaire
+par rapport à la taille ( en octets ) du message et dépend du débit
+soutenu par le réseau.
+\end{enumerate}
+
+Au final, le coût d'un message en fonction de la taille en octet du message
+est ( en secondes ):
+\begin{equation}
+T(n) = T_{\mbox{Startup}} + \frac{n}{\mbox{Débit}}
+\end{equation} 
+
+Cette formule n'est valable que si les deux processus sont directement reliés
+par une connection éthernet. Dans le cas où la distance entre les deux processus
+est supérieur à un, il faut compter le temps de dialogue avec les n{\oe}uds
+intermédiaires et le temps de transfert des messages par ces n{\oe}uds.
+
+Sur un réseau éthernet classique, le coût en temps d'un échange peut varier
+d'une exécution à l'autre. Des collisions de messages ou des corrections
+d'erreur font varier le coût d'un échange et la formule n'est utile
+qu'à titre indicatif dans ce contexte.
+
+La bibliothèque MPI utilisée en TD propose plusieurs protocoles d'envoi/réceptions.
+
+\paragraph{Envoi/Réception bufférisée}
+
+Lorsqu'on envoi un tableau, afin de s'assurer que le programmeur ne modifie pas
+le tableau durant le temps d'envoi, on recopie le tableau dans un \textsl{buffer}
+qui sera ensuite envoyé au processus destinataire. C'est ce qui est 
+\textcolor{red}{improprement} appelé \textbf{message asynchrone} par la bibliothèque MPI
+mais qu'on appelera ici \textbf{message bufférisé}.
+
+\begin{figure}[h]
+\begin{center}
+\begin{tikzpicture}
+\node[draw,fill=cyan] (E) {Expéditeur};
+\node[above = 1mm of E.north, draw, fill=yellow] (T1) {Données à envoyer};
+\node[above = 1cm of T1.north, draw, fill=orange] (T2) {Buffer d'envoi};
+\node[right = 2cm of T1.east, draw, fill=red] (T3) {Tableau de réception};
+\node[draw,fill=green,below = 1mm of T3.south] (R) {Destinataire};
+\draw[-latex] (T1.north) -- node[sloped,above] {\scriptsize{Copie}} (T2.south);
+\draw[-latex] (T2.south east) -- node[sloped,below]{\scriptsize{envoi}} (T3.south west);
+\draw[-latex,blue,dashed] (T3.north west) -- node[sloped,above]{\scriptsize{Reçoit}} (T2.north east);
+\end{tikzpicture}
+\end{center}
+\caption{Schéma d'envoi bufférisé}
+\end{figure}
+
+Si cela garantit l'intégrité des données envoyées au processus destinataire,
+cela a néanmoins un coût ( allocation mémoire plus copie de données ) et
+il est possible dans ce cas d'effectuer un envoi non bufférisé. Il faut alors
+s'assurer que le programme n'écrit pas de nouvelles données dans le tableau
+envoyé tant que celui-ci n'a pas été envoyé.
+
+\begin{figure}[h]
+\begin{center}
+\begin{tikzpicture}
+\node[draw,fill=cyan] (E) {Expéditeur};
+\node[above = 1mm of E.north, draw, fill=yellow] (T1) {Données à envoyer};
+\node[right = 2cm of T1.east, draw, fill=red] (T3) {Tableau de réception};
+\node[draw,fill=green,below = 1mm of T3.south] (R) {Destinataire};
+\draw[-latex] (T1.south east) -- node[sloped,below]{\scriptsize{envoi}} (T3.south west);
+\draw[-latex,blue,dashed] (T3.north west) -- node[sloped,above]{\scriptsize{Reçoit}} (T1.north east);
+\end{tikzpicture}
+\end{center}
+\caption{Schéma d'envoi non bufférisé}
+\end{figure}
+
+
+\paragraph{Envoi/Réception synchrone/asynchrone}
+
+Lors de l'envoi de données ou de leur réception, le programme peut attendre
+que l'envoi soit terminer avant de rendre la main pour le reste du programme,
+on parle alors d'envoi ou de réception \textbf{synchrone} ( bloquant dans le
+jargon MPI ) ou bien rendre tout de suite la main.
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+    \node at (1.5,5) {\scriptsize \texttt{Process 1}};
+    \node at (7.5,5) {\scriptsize \texttt{Process 2}};
+    \draw[rounded corners=6pt,draw,fill=orange!10] (0,4.8) rectangle (3,0);
+    \draw[rounded corners=6pt,draw,fill=orange!10] (6,4.8) rectangle (9,0);
+    \draw[->,dotted] (1.5,4.6) -- (1.5,3.25);
+    \node[color=red] at (1.5,3.0) {\scriptsize \texttt{envoi();}};
+    \draw[->,dotted] (7.5,4.6) -- (7.5,2.25);
+    \node[color=red] at (7.5,2) {\scriptsize \texttt{reception();}};
+    \draw[|-|,color=blue] (1.5,2.75) to node[below,sloped] (stall)  {\begin{minipage}{1cm}\scriptsize\centering processus suspendu\end{minipage}} (1.5,1.75);
+    \draw[->,dotted] (1.5,1.75) -- (1.5,0.25);
+    \draw[->,dotted] (7.5,1.75) -- (7.5,0.25);
+    \draw[->,color=red!80] (3,3) to node[above] (rq) {\scriptsize Requête d'envoi} (5.9,3);
+    \draw[<-,color=blue!50] (3.1,2) to node[above] (ack) {\scriptsize Acceptation} (6,2);
+    \draw[->,color=red!80] (3,1.75) to node[below] (msg) {\scriptsize Message} (5.9,1.75);
+\end{tikzpicture}    
+\caption{Exemple message synchrone quand la réception est exécutée après l'envoi}
+\end{figure}
+
+  \begin{figure}
+    \centering
+  \begin{tikzpicture}
+    \node at (1.5,5) {\scriptsize \texttt{Process 1}};
+    \node at (7.5,5) {\scriptsize \texttt{Process 2}};
+    \draw[rounded corners=6pt,draw,fill=orange!10] (0,4.8) rectangle (3,0);
+    \draw[rounded corners=6pt,draw,fill=orange!10] (6,4.8) rectangle (9,0);
+    \draw[->,dotted] (1.5,4.6) -- (1.5,2.25);
+    \node[color=red] at (1.5,2.0) {\scriptsize \texttt{envoi();}};
+    \draw[->,dotted] (7.5,4.6) -- (7.5,3.75);
+    \node[color=red] at (7.5,3.5) {\scriptsize \texttt{réception();}};
+    \draw[|-|,color=blue] (7.5,3.25) to node[below,sloped] (stall)  {\begin{minipage}{1cm}\scriptsize\centering Processus suspendu\end{minipage}} (7.5,1.25);
+    \draw[->,dotted] (1.5,1.25) -- (1.5,0.25);
+    \draw[->,dotted] (7.5,1.25) -- (7.5,0.25);
+    \draw[->,color=red!80] (3,2) to node[above] (rq) {\scriptsize Requête d'envoi} (5.9,2);
+    \draw[<-,color=blue!50] (3.1,1.5) to node[above] (ack) {\scriptsize Acceptation} (6,1.5);
+    \draw[->,color=red!80] (3,1.25) to node[below] (msg) {\scriptsize Message} (5.9,1.25);
+  \end{tikzpicture}
+  \caption{Exemple message synchrone quand la réception est exécutée avant l'envoi}
+  \end{figure}
+
+Dans le cas d'un message non bloquant, il est nécessaire plus loin dans le code
+de s'assurer que l'envoi ( ou la réception ) a bien été effectuée. Pour cela
+on disposera de fonction permettant :
+
+\begin{itemize}
+\item Soit de tester si l'envoi ou la réception a bien été effectuée;
+\item Soit d'attendre que l'envoi ( ou la réception ) soit effectuée;
+\end{itemize}
+
+Dans le premier cas, cela permet en attendant que l'envoi ( ou
+la réception ) se termine de continuer à effectuer des calculs
+indépendants des données envoyées ou reçues. Cela permet en particuliers
+de recouvrir les temps de transferts des données entre processus par
+des calculs et obtenir un gain de temps non négligeable du temps d'exécution
+du code.
+
+Cela permet en outre d'éviter des cas d'\textbf{interblocage} ( \textsl{deadlock} en
+anglais ) : c'est à dire des cas
+où :
+\begin{itemize}
+\item tous les processus envoient un message bloquant à un autre processus
+avant d'effectuer une réception;
+\item Ou le cas symétrique où tous les processus attendent un message en réception
+avant d'effectuer un envoi.
+\end{itemize}
+\pagebreak
+
+\textcolor{blue}{Un exemple d'interblocage a été donné par Dijkstra} : 
+
+\begin{framed}
+Cinq philosophes aimeraient
+réfléchir ou manger des spaghetti autour d'une table circulaire ayant cinq
+assiettes et cinq fourchettes utilisées quand un philosophe a faim. 
+
+Manger des spaghetti demande aux philosophes
+d'utiliser les fourchettes des deux côtés ( ?! ). 
+
+Un philosophe repose sa
+fourchette quand il n'a plus faim. 
+
+Une situation d'interblocage apparaît
+dans ce cas quand tous les philosophes présents tiennent une fourchette dans
+leur main droite.
+\end{framed}
+
+Les problèmes d'\textbf{interblocage}, assez fréquents au demeurant dans des
+applications réelles, sont des bogues difficiles à trouver, qui gêlent
+l'exécution des processus indéfiniment si on ne les tue pas manuellement.
+
+\underline{Exemple d'interblocage sur deux processus :}
+
+\begin{lstlisting}
+if (rank == 0)
+{
+    Recoit_synchrone( recvdata, count, tag, 1 );
+    Envoi_synchrone ( senddata, count, tag, 1 );
+}
+else
+{
+    Recoit_synchrone( recvdata, count, tag, 0 );
+    Envoi_synchrone ( senddata, count, tag, 0 );
+}
+\end{lstlisting}
+
+Première solution pour enlever l'interblocage :
+\begin{lstlisting}
+if (rank == 0)
+{
+    Recoit_synchrone( recvdata, count, tag, 1 );
+    Envoi_synchrone ( senddata, count, tag, 1 );
+}
+else
+{
+    Envoi_synchrone ( senddata, count, tag, 0 );
+    Recoit_synchrone( recvdata, count, tag, 0 );
+}
+\end{lstlisting}
+
+Deuxième solution pour enlever l'interblocage :
+\begin{lstlisting}
+if (rank == 0)
+{
+    Recoit_asynchrone( recvdata, count, tag, 1, status );
+    Envoie_synchrone ( senddata, count, tag, 1 );
+    Attend_fin_reception( status );
+}
+else
+{
+    Recoit_asynchrone( recvdata, count, tag, 0, status );
+    Envoie_synchrone ( senddata, count, tag, 0 );
+    Attend_fin_reception( status );
+}
+\end{lstlisting}
+
+Par défaut, dans la bibliothèque MPI, l'envoi est bufférisée et asynchrone tandis que la réception est
+synchrone et non bufférisée.
+
+\underline{\textcolor{red}{Exercice} :} : Expliquez pourquoi le code MPI ci dessous n'est pas sûr et peut par moment
+conduire à un interblocage.
+
+\begin{lstlisting}
+MPI_Comm_rank(comm, &myRank ) ;
+if (myRank == 0 ) {
+    MPI_Ssend( sendbuf1, count, MPI_INT, 2, tag, comm);
+    MPI_Recv( recvbuf1, count, MPI_INT, 2, tag, comm, &status);
+} else if ( myRank == 1 ) {
+    MPI_Ssend( sendbuf2, count, MPI_INT, 2, tag, comm);
+  else if ( myRank == 2 ) {
+    MPI_Recv( recvbuf1, count, MPI_INT, MPI_ANY_SOURCE, tag, comm, 
+              &status );
+    MPI_Ssend( sendbuf2, count, MPI_INT, 0, tag, comm);
+    MPI_Recv( recvbuf2, count, MPI_INT, MPI_ANY_SOURCE, tag, comm, 
+              &status );
+}
+\end{lstlisting}
+
+\section{Communications collectives}
+
+Une opération de communication collective est une opération d'échange de message
+mettant en jeu tous ou une partie des processus appartenant au contexte
+parallèle.
+
+La majorité de ces opérations peuvent se programmer à l'aide des échanges de
+message point à point, mais l'optimisation des échanges de message pour ces
+types d'opérations vont dépendre fortement de topologie du réseau, ce qui nuit
+à la portabilité du code sur d'autres machines aux topologies réseau différentes. 
+Aussi des bibliothèques comme MPI proposent ces opérations dans leurs APIs en garantissant
+que les échanges de message seront adaptés à la topologie réseau sur lequel le code sera
+exécuté en parallèle.
+
+Les communications colllectives peuvent se ranger en trois catégories :
+\begin{enumerate}
+\item Effectuer une barrière de synchronisation;
+\item Mouvement collectif de données
+  \begin{itemize}
+  \item Diffusion de données d'un processus sur tous les autres processus;
+  \item Rassembler sur un ou tous les processus des données réparties sur
+  chaque processus;
+  \item Distribuer et répartir des données d'un processus sur tous les autres 
+  processus;
+  \item \'Echanger des données de tous vers tous.
+  \end{itemize}
+\item Des calculs globaux :
+  \begin{itemize}
+  \item Effectuer des réductions, c'est à dire faire une opérations sur les données réparties
+  sur les processus ( somme, max, multiplication, etc. );
+  \item Effectuer un scan, c'est à dire une opération cumulative sur les données réparties
+  sur les processus.
+  \end{itemize}
+\end{enumerate}
+
+\subsection{Barrière de synchronisation globale}
+
+Cette opération crée un point de rendez-vous pour tous les processus dans le code.
+Les processus attendent que tous les autres processus soient arrivés sur la barrière
+de synchronisation pour continuer ensuite l'exécution du programme.
+
+Cette opération de synchronisation est particulièrement utile pour pouvoir mesurer
+des temps de calcul d'une partie d'un programme parallèle :
+
+\underline{\textcolor{blue}{Exemple en MPI} :}
+
+\begin{lstlisting}
+std::chrono::time_point<std::chrono::system_clock> start, end;
+// Tous les processus s'attendent à la ligne suivante
+// afin de démarrer en même temps la partie du code
+// dont on veut mesurer les performances en parallèle
+MPI_Barrier(MPI_COMM_WORLD);
+start = std::chrono::system_clock::now();
+// La partie du code dont on veut mesurer les performances
+...
+end = std::chrono::system_clock::now();
+...
+\end{lstlisting}
+
+\subsection{Mouvement collectif de données}
+
+\paragraph{Diffusion (BCast)}
+
+La diffusion consiste à ce qu'un processus envoie les mêmes données à tous
+les autres processus. 
+
+\begin{figure}[h]
+\begin{tikzpicture}
+    \node at (1,0) {\scriptsize \texttt{Process 0}};
+    \node at (5,0) {\scriptsize \texttt{Process 1}};
+    \node at (9,0) {\scriptsize \texttt{Process n-1}};
+    \node at (7,0) {\scriptsize \texttt{\ldots}};
+    \draw[rounded corners=4pt,draw,fill=orange!10] (0,0.5) rectangle (2,4.25);
+    \draw[rounded corners=4pt,draw,fill=orange!10] (4,0.5) rectangle (6,4.25);
+    \draw[rounded corners=4pt,draw,fill=orange!10] (8,0.5) rectangle (10,4.25);
+    \draw[fill=blue!10,draw] (0.5,3.5) rectangle (1.5,3.75);
+    \node[color=blue!70] at (1,4) {\scriptsize data};
+    \draw[fill=blue!10,draw] (4.5,3.5) rectangle (5.5,3.75);
+    \node[color=blue!70] at (5,4) {\scriptsize data};
+    \draw[fill=blue!10,draw] (8.5,3.5) rectangle (9.5,3.75);
+    \node[color=blue!70] at (9,4) {\scriptsize data};
+    \draw[fill=red!10,draw] (0.5,2.5) rectangle (1.5,2.75);
+    \node[color=red!70] at (0.5,3) {\scriptsize Buffer};
+    \draw[dotted] (1,3.5) -- (1,2.75);
+    \draw[dotted] (1,2.5) -- (1,1.75);
+    \node at (1,1.5) {\scriptsize \texttt{bcast();}};
+    \draw[dotted] (5,3.5) -- (5,1.75);
+    \node at (5,1.5) {\scriptsize \texttt{bcast();}};
+    \draw[dotted] (9,3.5) -- (9,1.75);
+    \node at (9,1.5) {\scriptsize \texttt{bcast();}};
+    \draw[-stealth',thick] (1.5,2.625) .. controls (2,2.75) and (2,3.625) .. (1.5,3.625);
+    \draw[-stealth',thick] (1.5,2.625) .. controls (2,2.625) and (5,2.5) .. (5,3.5);
+    \draw[-stealth',thick] (1.5,2.625) .. controls (2,2.5) and (9,2.5) .. (9,3.5);
+    \draw[dotted] (1,1.25) -- (1,0.75);
+    \draw[dotted] (5,1.25) -- (5,0.75);
+    \draw[dotted] (9,1.25) -- (9,0.75);
+\end{tikzpicture}
+\caption{Principe de la diffusion}
+\end{figure}
+
+\paragraph{Répartition (Scatter)}
+
+L'opération collectif de répartition consiste à répartir
+les données d'un tableau appartenant à un processus sur tous les
+processus ( processus contenant le tableau compris ) de telle sorte
+que la $i^{\mbox{ème}}$ partie du tableau ira sur le processus numéro
+$i$.
+
+\begin{figure}
+  \centering
+  \begin{tikzpicture}
+    \node at (1,0) {\scriptsize \texttt{Process 0}};
+    \node at (5,0) {\scriptsize \texttt{Process 1}};
+    \node at (9,0) {\scriptsize \texttt{Process n-1}};
+    \node at (7,0) {\scriptsize \texttt{\ldots}};
+    \draw[rounded corners=4pt,draw,fill=orange!10] (0,0.5) rectangle (2,4.25);
+    \draw[rounded corners=4pt,draw,fill=orange!10] (4,0.5) rectangle (6,4.25);
+    \draw[rounded corners=4pt,draw,fill=orange!10] (8,0.5) rectangle (10,4.25);
+    \draw[fill=blue!10,draw] (0.75,3.5) rectangle (1.25,3.75);
+    \node[color=blue!70] at (1,4) {\scriptsize data};
+    \draw[fill=blue!10,draw] (4.75,3.5) rectangle (5.25,3.75);
+    \node[color=blue!70] at (5,4) {\scriptsize data};
+    \draw[fill=blue!10,draw] (8.75,3.5) rectangle (9.25,3.75);
+    \node[color=blue!70] at (9,4) {\scriptsize data};
+    \draw[fill=red!10,draw, step=0.25] (0.5,2.5) rectangle (1.5,2.75);
+    \draw[draw, step=0.25] (0.49,2.49) grid (1.5,2.75);
+    \draw[dotted] (1.1,2.625) -- (1.24,2.625);
+    \node[color=red!70] at (0.5,2.25) {\scriptsize Buffer};
+    \draw[dotted] (1,3.5) -- (1,2.75);
+    \draw[dotted] (1,2.5) -- (1,1.75);
+    \node at (1,1.5) {\scriptsize \texttt{scatter();}};
+    \draw[dotted] (5,3.5) -- (5,1.75);
+    \node at (5,1.5) {\scriptsize \texttt{scatter();}};
+    \draw[dotted] (9,3.5) -- (9,1.75);
+    \node at (9,1.5) {\scriptsize \texttt{scatter();}};
+    \draw[-stealth',thick] (0.6,2.75) .. controls (0.6,2.95) and (0.75,3.25) .. (1,3.5);
+    \draw[-stealth',thick] (0.9,2.75) .. controls (1.25,3.25) and (4.75,3.25) .. (5,3.5);
+    \draw[-stealth',thick] (1.5,2.625) .. controls (1.75,2.625) and (8.75,3.25) .. (9,3.5);
+    \draw[dotted] (1,1.25) -- (1,0.75);
+    \draw[dotted] (5,1.25) -- (5,0.75);
+    \draw[dotted] (9,1.25) -- (9,0.75);
+  \end{tikzpicture}
+  \caption{Schéma du fonctionnement d'une répartition collective}
+\end{figure}
+
+\paragraph{Rassemblement (Gather)}
+
+C'est l'opération inverse de la répartition collective : le processus
+\textcolor{blue}{destinataire} rassemble dans un tableau les données
+envoyées par tous les processus ( la donnée du $i^{\mbox{ème}}$ processus
+va à la $i^{\mbox{ème}}$ position dans le tableau ).
+
+\begin{figure}
+  \centering
+  \begin{tikzpicture}
+    % \draw[step=1mm,color=black!10] (0,0) grid (3cm,3cm);
+    % \draw[step=1cm,color=black!50] (0,0) grid (3cm,3cm);
+    \node at (1,0) {\scriptsize \texttt{Process 0}};
+    \node at (5,0) {\scriptsize \texttt{Process 1}};
+    \node at (9,0) {\scriptsize \texttt{Process n-1}};
+    \node at (7,0) {\scriptsize \texttt{\ldots}};
+    \draw[rounded corners=4pt,draw,fill=orange!10] (0,0.5) rectangle (2,4.25);
+    \draw[rounded corners=4pt,draw,fill=orange!10] (4,0.5) rectangle (6,4.25);
+    \draw[rounded corners=4pt,draw,fill=orange!10] (8,0.5) rectangle (10,4.25);
+    \draw[fill=blue!10,draw] (0.75,3.5) rectangle (1.25,3.75);
+    \node[color=blue!70] at (1,4) {\scriptsize data};
+    \draw[fill=blue!10,draw] (4.75,3.5) rectangle (5.25,3.75);
+    \node[color=blue!70] at (5,4) {\scriptsize data};
+    \draw[fill=blue!10,draw] (8.75,3.5) rectangle (9.25,3.75);
+    \node[color=blue!70] at (9,4) {\scriptsize data};
+    \draw[fill=red!10,draw, step=0.25] (0.5,2.5) rectangle (1.5,2.75);
+    \draw[draw, step=0.25] (0.49,2.49) grid (1.5,2.75);
+    \draw[dotted] (1.1,2.625) -- (1.24,2.625);
+    \node[color=red!70] at (0.5,2.25) {\scriptsize Buffer};
+    \draw[dotted] (1,3.5) -- (1,2.75);
+    \draw[dotted] (1,2.5) -- (1,1.75);
+    \node at (1,1.5) {\scriptsize \texttt{gather();}};
+    \draw[dotted] (5,3.5) -- (5,1.75);
+    \node at (5,1.5) {\scriptsize \texttt{gather();}};
+    \draw[dotted] (9,3.5) -- (9,1.75);
+    \node at (9,1.5) {\scriptsize \texttt{gather();}};
+    \draw[-stealth',thick] (1,3.5) .. controls (0.75,3.25) and (0.6,2.95) .. (0.6,2.75);
+    \draw[-stealth',thick] (5,3.5) .. controls (4.75,3.25) and (1.25,3.25) .. (0.9,2.75);
+    \draw[-stealth',thick] (9,3.5) .. controls (8.75,3.25) and (1.75,2.625) .. (1.5,2.625);
+    \draw[dotted] (1,1.25) -- (1,0.75);
+    \draw[dotted] (5,1.25) -- (5,0.75);
+    \draw[dotted] (9,1.25) -- (9,0.75);
+  \end{tikzpicture}    
+  \caption{Schéma opératoire du rassemblement collectif}
+\end{figure}
+
+
+\paragraph{Réduction}
+
+L'opération de réduction combine l'opération de rassemblement avec une opération logique
+ou arithmétique : le processus destinataire \textcolor{blue}{collecte} les données puis
+\textcolor{blue}{applique} l'opération et stocke le résultat dans son propre espace
+mémoire.
+
+\begin{figure}
+  \centering
+  \begin{tikzpicture}
+    % \draw[step=1mm,color=black!10] (0,0) grid (3cm,3cm);
+    % \draw[step=1cm,color=black!50] (0,0) grid (3cm,3cm);
+    \node at (1,0) {\scriptsize \texttt{Process 0}};
+    \node at (5,0) {\scriptsize \texttt{Process 1}};
+    \node at (9,0) {\scriptsize \texttt{Process n-1}};
+    \node at (7,0) {\scriptsize \texttt{\ldots}};
+    \draw[rounded corners=4pt,draw,fill=orange!10] (0,0.5) rectangle (2,4.25);
+    \draw[rounded corners=4pt,draw,fill=orange!10] (4,0.5) rectangle (6,4.25);
+    \draw[rounded corners=4pt,draw,fill=orange!10] (8,0.5) rectangle (10,4.25);
+    \draw[fill=blue!10,draw] (0.75,3.5) rectangle (1.25,3.75);
+    \node[color=blue!70] at (1,4) {\scriptsize data};
+    \draw[fill=blue!10,draw] (4.75,3.5) rectangle (5.25,3.75);
+    \node[color=blue!70] at (5,4) {\scriptsize data};
+    \draw[fill=blue!10,draw] (8.75,3.5) rectangle (9.25,3.75);
+    \node[color=blue!70] at (9,4) {\scriptsize data};
+    \draw[fill=red!10,draw, step=0.25] (0.5,2.5) rectangle (1.5,2.75);
+    \node[color=red!70] at (0.5,2.25) {\scriptsize Buffer};
+    \draw[dotted] (1,3.5) -- (1,2.75);
+    \draw[dotted] (1,2.5) -- (1,1.75);
+    \node at (1,1.5) {\scriptsize \texttt{reduce();}};
+    \draw[dotted] (5,3.5) -- (5,1.75);
+    \node at (5,1.5) {\scriptsize \texttt{reduce();}};
+    \draw[dotted] (9,3.5) -- (9,1.75);
+    \node at (9,1.5) {\scriptsize \texttt{reduce();}};
+    \node[shape=circle,fill=green!20,draw] (plus) at (3,3) {\Large +};
+    \draw[-stealth',thick] (1,3.5) to (plus);
+    \draw[-stealth',thick] (5,3.5) to (plus);
+    \draw[-stealth',thick] (9,3.5) to (plus);
+    \draw[-stealth',thick] (plus) to (1.5,2.625);
+    \draw[dotted] (1,1.25) -- (1,0.75);
+    \draw[dotted] (5,1.25) -- (5,0.75);
+    \draw[dotted] (9,1.25) -- (9,0.75);
+  \end{tikzpicture}
+  \caption{Exemple illustratif d'une réduction avec somme}
+\end{figure}
+
+Il existe dans certaines bibliothèques, comme MPI, une instruction combinant une opération de réduction
+suivi d'une opération de diffusion sur tous les processus.
+
+\paragraph{Scan}
+
+L'opération de scan est une opération proche de l'opération de réduction, mis à part que l'opération se fait
+par accumulation de processus en processus ( ordonné selon leur rang ).
+
+\begin{figure}
+  \centering
+  \begin{tikzpicture}
+    % \draw[step=1mm,color=black!10] (0,0) grid (3cm,3cm);
+    % \draw[step=1cm,color=black!50] (0,0) grid (3cm,3cm);
+    \node at (1,0) {\scriptsize \texttt{Process 0}};
+    \node at (5,0) {\scriptsize \texttt{Process 1}};
+    \node at (9,0) {\scriptsize \texttt{Process 2}};
+    %\node at (7,0) {\scriptsize \texttt{\ldots}};
+    \draw[rounded corners=4pt,draw,fill=orange!10] (0,0.5) rectangle (2,4.25);
+    \draw[rounded corners=4pt,draw,fill=orange!10] (4,0.5) rectangle (6,4.25);
+    \draw[rounded corners=4pt,draw,fill=orange!10] (8,0.5) rectangle (10,4.25);
+    %\draw[fill=blue!10,draw] (0.75,3.5) rectangle (1.25,3.75);
+    \node[color=blue!70,rectangle,fill=blue!10,draw] at (1,3.5) (dat0) {\scriptsize data};
+    \node[color=blue!70,rectangle,fill=blue!10,draw] at (5,3.5) (dat1) {\scriptsize data};
+    %\draw[fill=blue!10,draw] (8.75,3.5) rectangle (9.25,3.75);
+    \node[color=blue!70,rectangle,fill=blue!10,draw] at (9,3.5) (dat2) {\scriptsize data};
+    \node[color=red!70,rectangle, fill=red!10,draw] at (5,2.25) (buf1) {\scriptsize Buffer};
+    \node[color=red!70,rectangle, fill=red!10,draw] at (9,2.25) (buf2) {\scriptsize Buffer};
+    \draw[dotted] (1,3.5) -- (1,2.75);
+    \draw[dotted] (1,2.5) -- (1,1.75);
+    \node at (1,1.5) {\scriptsize \texttt{scan();}};
+    \draw[dotted] (5,3.5) -- (5,1.75);
+    \node at (5,1.5) {\scriptsize \texttt{scan();}};
+    \draw[dotted] (9,3.5) -- (9,1.75);
+    \node at (9,1.5) {\scriptsize \texttt{scan();}};
+    \node[shape=circle,fill=green!20,draw] (plus) at (3,3) {\Large +};
+    \node[shape=circle,fill=green!20,draw] (plus2) at (7,3) {\Large +};
+    \draw[-stealth',thick] (dat0.south) to (plus);
+    \draw[-stealth',thick] (dat1.south) to (plus);
+    \draw[-stealth',thick] (dat2.west) to (plus2);
+    \draw[-stealth',thick] (buf1.east) to (plus2);
+    \draw[-stealth',thick] (plus) to (buf1.west);
+    \draw[-stealth',thick] (plus2) to (buf2.west);
+    \draw[dotted] (1,1.25) -- (1,0.75);
+    \draw[dotted] (5,1.25) -- (5,0.75);
+    \draw[dotted] (9,1.25) -- (9,0.75);
+  \end{tikzpicture}    
+  \caption{Illustration d'un scan avec somme}
+\end{figure}
+
+\section{Développement et Mesures de performances}
+
+\subsection{Une stratégie de débogage}
+
+Déboguer un programme en parallèle est une tâche bien plus ardue qu'en séquentiel !
+Une approche \textsl{efficace} en trois étapes pour déboguer des programmes faisant
+de la communication point à point est :
+\begin{enumerate}
+ \item Si possible, d'abord exécuter le programme sur un seul processus, et le déboguer comme
+ un programme séquentiel classique;
+ \item Exécuter le programme sur de deux à quatre processus sur un même n{\oe}ud ou sur son ordinateur
+ personnel. Vérifier que les messages sont bien envoyés au bon processus et qu'un processus reçoit bien
+ le bon message. Il arrive souvent qu'il y ait une erreur sur l'identité du message ou bien des messages
+ envoyés aux mauvais processus;
+ \item Exécuter maintenant le programme à l'aide de deux à quatre processus sur différents
+ n{\oe}uds de calcul. Cela vous aidera à mesurer l'impact des délais dûs au réseau et à la
+ synchronisation et ainsi mesurer le temps pris pour cela dans votre programme.
+\end{enumerate}
+
+
+\subsection{Algorithme parallèle à coût optimal}
+
+Un algorithme à coût optimal est un algorithme tel que :
+\begin{center}
+ (Complexité en temps parallèle) $\times$ (nombre de processus) = (complexité en temps séquentiel).
+\end{center}
+
+\underline{\textcolor{violet}{Exemple} :} Supposons qu'un problème $P$ a une complexité en $O(n.\log(n))$.
+Un algorithme parallèle résolvant le même problème, utilisant $n$ processus pour un coût de $O(\log(n))$
+en complexité sur chaque processus est optimal en coût, tandis qu'un algorithme parallèle utilisant
+$n^{2}$ processus avec un coût en  $O(1)$ sur chaque processus n'est pas optimal en coût.
+
+\subsection{Estimation du coût d'envoi/réception par une méthode de ping--pong}
+
+Pour estimer empiriquement le temps de communication entre un processus $P_{1}$ et un processus $P_{2}$,
+une solution consiste à suivre la méthode suivante : \textbf{Immédiatement} après que $P_{2}$ ait reçu
+un message envoyé par $P_{1}$, il renvoie le message à $P_{1}$ et on mesure le temps d'aller retour de ce
+message :
+
+\underline{\textcolor{violet}{Exemple} :}
+
+\begin{lstlisting}
+double t1 = get_time();
+if (myrank == P1) {
+    send(&x, P2); recv(&x, P2);
+} else if (myrank == P2) {
+    recv(&x, P1); send(&x, P1);
+}
+double t2 = get_time();
+elapsedTime = 0.5*(t2-t1);
+\end{lstlisting}
+
+\subsection{La loi d'Amdahl}
+
+La loi d'Amdahl est une loi émise par l'informaticien Gene Amdahl travaillant chez Intel en 1967 
+pour promouvoir les architectures séquentielles à l'époque. Elle permet pour un problème fixe
+donné, de calculer le rapport de temps que l'on peut espérer gagner quelque soit le nombre
+de processus employés.
+
+La loi d'Amdahl peut être formulée de la façon suivante :
+
+\begin{equation}
+ S(n) = \frac{t_{s}}{f.t_{s}+\frac{(1-f)t_{s}}{n}} = \frac{n}{1+(n-1)f}
+\end{equation}
+
+où $t_{s}$ est le temps pris pour exécuter le programme en séquentiel, $f$ est la proportion du programme
+( en temps CPU séquentiel ) qui ne peut être parallélisé et fonctionne donc en séquentiel, $n$ le nombre de processus utilisés en
+parallèle pour exécuter le programme.
+
+D'après cette formule, on observe qu'en prenant une infinité de n{\oe}uds de calcul, le rapport de temps maximal
+espéré sera limité à $\frac{1}{f}$.
+
+\underline{\textcolor{orange}{Exemple} :} En supposant qu'un programme ait 5\% de son code ( en temps CPU
+séquentiel ) non parallélisable, le rapport de temps maximal gagné sera inférieur à vingt.
+
+Cette loi est surtout utile pour dimensionner le nombre de processus qu'on utilisera pour exécuter un code en parallèle.
+
+\subsection{Loi de Gustafson}
+
+Si la loi de d'Amdahl permet de prédire un gain maximal sur le rapport de temps pris entre la version séquentielle du code
+et la version parallèle, elle n'est cependant valable que pour une taille fixe de problème.
+
+Or, en réalité, le nombre de processus qu'on prendra pour exécuter un code parallèle dépendra fortement de la taille du problème
+à traiter. 
+
+L'informaticien John L. Gustafson et son collègue Edwin H. Barsis, en 1988, dans un article intitulé \textsl{Reevaluating Amdahl's Law}
+ont émis une nouvelle loi dans le cadre où la quantité de donnée traitée en parallèle augmente avec le nombre de processus utilisés ( ce qui est vérifié
+dans la plupart des cas ).
+
+La loi de Gustafson peut être formulée comme suit :
+
+\begin{equation}
+ S_{s}(n) = \frac{s+n.p}{s+p} = s + n.p = n + (1-n)s
+\end{equation}
+
+où $s$ est la proportion du code en temps CPU exécuté en séquentiel et $p$ la proportion de code exécuté en parallèle ( en temps CPU ) :
+$0 < s,p < 1$ et $s+p=1$.
+
+La loi de Gustafson donne des résultats plus réalistes que la loi d'Amdahl et souvent meilleurs !
+
+\subsection{Mesures de performances}
+
+\paragraph{L'accélération (speedup)} : L'accélération est une mesure permettant d'estimer le degré de 
+parallélisme de votre code.
+
+Soit $t_{s}$ le temps pris pour exécuter la version séquentielle du programme sur un simple processus
+et $t_{p}(n)$ le temps pris pour exécuter la version parallèle du programme sur $n$ n{\oe}uds de calcul.
+
+L'accélération est alors défini par :
+
+\begin{equation}
+ S(n) = \frac{t_{s}}{t_{p}(n)}
+\end{equation}
+
+\underline{Remarque} : En général, l'algorithme utilisé en séquentiel est différent de celui utilisé
+en parallèle. La notion d'accélération est une notion très délicate : 
+\begin{itemize}
+ \item L'algorithme utilisé en séquentiel est-il optimal ? 
+ \item Le code séquentiel est-il bien optimisé, et exploite-t'il bien les mémoires caches ?
+\end{itemize}
+
+Par définition, l'accélération est toujours un nombre réel inférieur au nombre de processus, mais il arrive, du fait
+de la partition du problème à traiter et des mémoires caches qu'on obtienne une surlinéarité en traçant
+la courbe du speedup. Cela indique dans ce cas que l'optimisation du code séquentiel a été mal faite
+et qu'on peut encore gagner du temps CPU en gérant mieux les mémoires caches.
+
+\paragraph{Diagramme espace--temps}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.9]
+\draw (1,3) rectangle (6,3.25) (2,2) rectangle (4,2.25) (2,1) rectangle (3,1.25) (2,0) rectangle (5,0.25);
+\draw[fill=red,draw] (4,2) rectangle (4.8,2.25) (3,1) rectangle (4.2,1.25) (5,0) rectangle (5.3,0.25);
+\draw (1,-0.5) -- (1,3.25) (2,0) -- (2,3.25);
+\draw[->,color=blue] (4.8,2.25) -- (4.9,3);
+\draw[->,color=blue] (4.2,1.25) -- (4.3,3);
+\draw[->,color=blue] (5.3,0.25) to node[midway, sloped] (x) 
+        {\begin{minipage}{22mm}\scriptsize\color{black} Pente = temps d'envoi message\end{minipage}} (5.4,3);
+\draw[->] (1,-0.5) --  (6.25,-0.5);
+\node at (3,-0.25) {\scriptsize Calcul};
+\node at (5.15,-0.25) {\scriptsize Communication};
+\node at (0,3) {\scriptsize processus 1};
+\node at (0,2) {\scriptsize processus 2};
+\node at (0,1) {\scriptsize processus 3};
+\node at (0,0) {\scriptsize processus 4};
+\node at (6.,-0.75) {\scriptsize Temps};
+\draw[fill=red,draw] (-0.55,-1) rectangle (0.7,-0.75);
+\node at (1.9,-1) {\begin{minipage}{20mm}\scriptsize  Attente d'envoi de message\end{minipage}};
+\draw[->,color=blue] (3.5,-1.25) -- (3.6,-0.75);
+\node at (4.25,-1.) {\scriptsize Message};
+\end{tikzpicture}
+\caption{Exemple de diagramme espace--temps}
+\label{fig::spacetimediag}
+\end{figure}
+
+Le diagramme d'espace--temps permet de visualiser facilement les temps d'attente ( en rouge sur la figure (\ref{fig::spacetimediag}) )
+des différents processus pour envoyer ou attendre un message sans effectuer de calcul. Le but sera lors de la phase d'optimisation
+de minimiser ces zones rouges afin d'obtenir de meilleurs performances et un temps de réponse réduit pour le code optimisé.
+
+
+
+\paragraph{Efficacité}
+
+L'efficacité donne la fraction de temps durant laquelle les processeurs sont utilisés pour traiter des données ( et non
+à transférer des données ou à attendre une synchronisation ).
+
+\begin{equation}
+ E(n) = 100.\times \frac{t_{s}}{t_{p}(n)\times n} = 100\times\frac{S(n)}{n}
+\end{equation}
+
+\paragraph{Coût d'un calcul parallèle}
+
+Cette mesure permet à des administrateurs de calculateurs parallèle d'évaluer le coût et la facture d'un cacul parallèle.
+Elle est donnée par la formule :
+
+\begin{equation}
+ C(n) = n \times t_{p}(n) = \frac{n.t_{s}}{S(n)} = \frac{t_{s}}{E(n)}
+\end{equation}
+
+Dans le cas d'un calcul séquentiel, le coût du calcul revient à
+
+\[
+ C(1) = t_{s} \times 1 = t_{s}
+\]
+
+Un \textcolor{red}{algorithme parallèle à coût optimal} est un algorithme traitant un problème en parallèle sur plusieurs
+processus tel que le coût de traitement est proportionnel au traitement en séquentiel ( autrement dit, $E(n)$ est constant ).
+
+\paragraph{Scalabilité}
+
+Cette mesure observe la situation où on augmente les données à traiter tout en augmentant le nombre de processus permettant de les traiter.
+On mesura l'accélération du programme en augmentant la quantité de données en fonction du nombre de processus exécutés.
+
+\subsection{Critères pour avoir de bonnes performances}
+
+\paragraph{\'Equilibre des charges} : Il est important lors de la mise au point de programmes parallèle de s'assurer que tous les processus traitent
+des données tout le long de l'exécution du programme. En effet, il peut arriver dans certaines situations, que certains processus finissent
+longtemps avant les autres. Dans ce cas, il est certain qu'on obtiendra une mauvaise accélération ( ou une mauvaise efficacité ).
+
+\underline{\textcolor{orange}{Exemple} :} Pour un problème donné, un programme est executé sur $n$ processus. On observe que la moitié des processus
+mettent deux fois moins longtemps pour traiter leurs données que l'autre moitié. Soit $t_{p}^{i}$ le temps mis par le processus de range $i$ pour traiter ses données
+propres  en parallèle et $t_{s}$ le temps mis par le programme séquentiel ( supposé optimal ) pour traiter les données en séquentiel.
+On sait que ( sinon le programme séquentiel ne serait pas optimal ) :
+\[
+ \sum_{i=1}^{n} t_{p}^{i} \geq t_{s}
+\]
+
+Si on note $t_{p}$ le temps maximal mis par un processus pour traiter ses données, on aura donc d'après l'observation faite sur le temps pris par chaque processus que :
+
+\[
+ \frac{n}{2}\frac{t_{p}}{2} + \frac{n}{2}t_{p} \geq t_{s}
+\]
+
+Si bien que l'efficacité maximal d'un tel programme, sans compter les temps de communication et les synchronisations,  vaudra :
+\[
+ E =  \frac{t_{s}}{n.t_{p}} \leq \frac{3}{4} = 75 \%
+\]
+
+Il est donc primordial de s'assurer que tous les processus auront à peu près la même charge de travail afin d'obtenir une bonne efficacité.
+
+Il arrive toutefois qu'on soit dans l'incapacité de connaître en avance la charge de travail de chacun des processus ( en particuliers pour des
+algorithmes itératifs dont on ne connait pas d'avance le nombre d'itération nécessaire à faire sur chaque ensemble de données ).
+
+On utilise dans ce cas un algorithme permettant d'assurer dynamiquement l'équilibre des charges entre les processus. L'algorithme le plus utilisé
+pour cela est l'algorithme de \textsl{task farming}. Le principe est de diviser le problème en un certain nombre de tâches indépendantes
+qui doivent être exécutées. Un des processus ( qu'on nommera \textbf{le maître} ) est responsable de générer ces tâches et de les distribuer
+parmi tous les processus travailleurs libres ( dont il peut éventuellement lui même faire parti ). Chaque processus exécute une certaine tâche et renvoie
+le résultat au processus maître. En retourn le processus maître génère une nouvelle tâche qu'il envoie au travailleur qui vient de terminer
+sa tâche. Ce procédé continue jusqu'à ce qu'il n'y ai plus de tâches à faire, et que le problème est donc résolu.
+
+\begin{figure}
+\begin{lstlisting}
+MPI_Init();
+...
+if ( rank == 0 )// rank == 0 => master
+{
+  int count_task = 0;
+  for ( int i = 1; i < nbp; ++i ) {
+     send(count_task, 1, MPI_INT, i, ... );     
+     count_task += 1;
+  }
+  while (count_task < nb_tasks) {
+    // status contiendra le numéro du proc ayant envoyé
+    // le résultat... : status.MPI_SOURCE en MPI
+    recv(&result, ..., MPI_ANY_SOURCE, ..., &status );
+    send(count_task, 1, MPI_INT, result[0], ... );     
+    count_task += 1;    
+  }
+  // On envoie un signal de terminaison à tous
+  // les processus
+  for ( int i = 1; i < nbp; ++i ) {
+     send(-1, 1, MPI_INT, i, ... );     
+  }  
+} else
+{// Cas où je suis un travailleur
+  int num_task = 0;
+  // Tant que je ne reçois pas le n° de terminaison
+  while (num_task != -1)
+  {
+    recv(&num_task, 1, MPI_INT, 0, ... );
+    if (num_task >= 0) {
+      // Exécute la tâche correspondant au numéro
+      execute_task(num_task, ...);
+      // Renvoie le résultat avec son numéro 
+      send(result, ..., 0, ... );
+    }
+  }
+}
+MPI_Finalize();
+\end{lstlisting}
+\caption{Algorithme de task farming}
+\end{figure}
+
+\paragraph{Granularité parallèle} : On a vu qu'un envoi de message engendré 
+un coût fixe d'initialisation et un coût linéaire par rapport à la quantité
+de donnée envoyé ( dépendant du débit supporté par le réseau ). Si on divise
+trop le travail entre les processus, le temps de communication deviendra trop
+importante par rapport à la quantité de travail que devra faire
+un processus entre deux échanges de message. Au final, on risque de passer plus
+ de temps à échanger des messages qu'à traiter les données par notre programme.
+ 
+ On appelle \textcolor{orange}{granularité parallèle} le rapport entre la quantité de donnée traitée
+ et la quantité de données échangées.
+ 
+ Il faut donc veiller à ne pas trop découper notre problème. Le problème étant,
+ qu'avoir de trop gros blocs de données à traiter peut être antagoniste avec
+ le problème d'équilibre de charge. Il faut donc trouver un juste milieu
+ dans la répartition des données permettant à la fois un équilibrage des
+ charges raisonnable et une granularité parallèle.
+
+\paragraph{Recouvrement des échanges de message par des calculs}
+
+Enfin, signalons que pour obtenir une bonne performance de notre code parallèle,
+on peut toujours utiliser les envois/réceptions asynchrones afin de couvrir
+nos échanges de message par des calculs sur d'autres données, non échangées
+à ce moment là.
+\end{document}
