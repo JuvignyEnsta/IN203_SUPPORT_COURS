@@ -1,0 +1,272 @@
+\documentclass[fleqn,11pt]{article}
+\usepackage[top=3cm,bottom=3cm,left=3cm,right=3cm,headsep=10pt,a4paper]{geometry} % Page margins
+
+\usepackage{graphicx} % Required for including pictures
+\graphicspath{{Pictures/}} % Specifies the directory where pictures are stored
+
+\usepackage{tikz} % Required for drawing custom shapes
+\usepackage{dsfont}
+\usepackage{enumitem} % Customize lists
+\setlist{nolistsep} % Reduce spacing between bullet points and numbered lists
+
+\usepackage{booktabs} % Required for nicer horizontal rules in tables
+\usepackage{xcolor} % Required for specifying colors by name
+\definecolor{ocre}{RGB}{243,102,25} % Define the orange color used for highlighting throughout the book
+\usepackage{microtype} % Slightly tweak font spacing for aesthetics
+%\usepackage[utf8]{inputenc} % Required for including letters with accents
+%\usepackage[T1]{fontenc} % Use 8-bit encoding that has 256 glyphs
+
+\usepackage{calc} % For simpler calculation - used for spacing the index letter headings correctly
+\usepackage{makeidx} % Required to make an index
+\makeindex % Tells LaTeX to create the files required for indexing
+\usepackage[many]{tcolorbox}
+\usepackage{listings}
+\usepackage{smartdiagram}
+\usetikzlibrary{shadows, arrows, decorations.pathmorphing, fadings, shapes.arrows, positioning, calc, shapes, fit, matrix}
+\usepackage{polyglossia}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\definecolor{lightblue}{RGB}{0,200,255} 
+\definecolor{paper}{RGB}{239,227,157}
+
+\pgfdeclarelayer{background}
+\pgfdeclarelayer{foreground}
+\pgfsetlayers{background,main,foreground}
+
+\lstset{%
+  basicstyle=\footnotesize,
+  frame=single,
+  keywordstyle=\color{blue},
+  language=bash,
+  commentstyle=\color{red},
+  stringstyle=\color{brown},
+  keepspaces=true,
+  showspaces=false,
+  tabsize=2
+}
+
+\title{Git: Résumé des commandes}
+\author{Juvigny Xavier}
+\date{Mars 2017}
+
+\newtheorem{prop}{Propriétés }
+\newtheorem{remark}{Remarque }
+
+\begin{document}
+\maketitle
+
+\section{Configuration}
+
+\begin{itemize}
+\item Nom de l'utlisateur 
+\begin{lstlisting}
+git config --global user.name "Olivier.Martin"
+\end{lstlisting}
+\item E-mail de l'utilisateur
+\begin{lstlisting}
+git config --global user.email "Olivier.Martin@ensta.fr"
+\end{lstlisting}
+\item Choix de l'éditeur utilisé pour git
+\begin{lstlisting}
+git config --global core.editor subl
+\end{lstlisting}
+\item Choix de l'outil de comparaison de deux fichiers :
+\begin{lstlisting}
+git config --global merge.tool diff
+\end{lstlisting}
+\item Affiche la configuration choisie pour git :
+\begin{lstlisting}
+git config --list
+\end{lstlisting}
+\end{itemize}
+
+\section{Commandes principales}
+
+\begin{itemize}
+\item \'Etat des fichiers (modifiés, effacés, soumis, \ldots ) : 
+\begin{lstlisting}
+git status
+\end{lstlisting}
+\item Affichage des diverses branches : 
+\begin{lstlisting}
+git branch
+\end{lstlisting}
+\item Créer une nouvelle branche :
+\begin{lstlisting}
+git branch nom_de_ma_branche
+\end{lstlisting}
+\item Changer de branche :
+\begin{lstlisting}
+git checkout nom_de_ma_branch
+\end{lstlisting}
+\item Première soumission :
+\begin{lstlisting}
+git add .
+git commit - m "initial commit"
+\end{lstlisting}
+\item Soumissions suivantes :
+\begin{lstlisting}
+git add chemin_vers_mon_fichier
+git commit -m "message du commit"
+\end{lstlisting}
+\item Annule la dernière soumission et les modifications associées :
+\begin{lstlisting}
+git reset --hard md5_commit
+git push --force
+\end{lstlisting}
+\item Mettre à jour le dépot local :
+\begin{lstlisting}
+git pull
+\end{lstlisting}
+\item Envoyer sa soumission au dépot distant :
+\begin{lstlisting}
+git push
+\end{lstlisting}
+\item Supprimer un fichier du répertoire et de l'index des fichiers
+gérés par git :
+\begin{lstlisting}
+git rm nom_du_fichier
+\end{lstlisting}
+\item Supprimer un fichier uniquement de l'index des fichiers gérés par git :
+\begin{lstlisting}
+git rmg --cached nom_du_fichier
+\end{lstlisting}
+\end{itemize}
+
+\section{Afficher les différences entre diverses versions}
+
+\begin{itemize}
+\item Affiche la différence entre le contenu du dernier commit et celui du répertoire de travail. Cela correspond à ce qui serait commité par 
+\lstinline@git commit -a@.
+\begin{lstlisting}
+git diff HEAD
+\end{lstlisting}
+\item Affiche la différence entre le contenu pointé par A et celui pointé par B.
+\begin{lstlisting}
+git diff A B
+\end{lstlisting}
+\item Diff entre un dossier présent sur deux branches
+\begin{lstlisting}
+git diff master..MA_BRANCH chemin/vers/mon_dossier
+\end{lstlisting}
+\end{itemize}
+
+\section{Afficher les dernières soumissions}
+
+\begin{itemize}
+\item Afficher les dernières soumissions :
+\begin{lstlisting}
+git log
+\end{lstlisting}
+\item Affiche les $X$ dernières soumissions  :
+\begin{lstlisting}
+git log -n X
+\end{lstlisting}
+\item Affiche un ensemble de commits par date :
+\begin{lstlisting}
+git log --since=date --until=date
+\end{lstlisting}
+\item Représentation de l'historique à partir de \texttt{HEAD} ( soumission/branche ) :
+\begin{lstlisting}
+git log --oneline --graph --decorate
+\end{lstlisting}
+\item Représentation de l’historique à partir d'un fichier (commit / branch) :
+\begin{lstlisting}
+git log --oneline --graph --decorate nom_du_fichier
+\end{lstlisting}
+\end{itemize}
+
+\section{Annuler des commits}
+
+\subsection{Version soft}
+
+Seul le commit est retiré de Git : 
+vos fichiers, eux, restent modifiés. Vous pouvez alors à nouveau changer vos fichiers si besoin est et refaire un commit.
+
+\begin{lstlisting}
+git reset HEAD^
+\end{lstlisting}
+
+Pour indiquer à quel commit on souhaite revenir, il existe plusieurs notations :
+\begin{itemize}
+\item \verb@HEAD@ : dernier commit ;
+\item \verb@HEAD^@ : avant-dernier commit ;
+\item \verb@HEAD^^@ : avant-avant-dernier commit ;
+\item \verb@HEAD~2@ : avant-avant-dernier commit (notation équivalente) ;
+\item \verb@d6d98923868578a7f38dea79833b56d0326fcba1@ : indique un numéro de commit précis;
+\end{itemize}
+
+\subsection{Version hard}
+
+Si vous voulez annuler votre dernier commit et les changements effectués dans les fichiers, 
+il faut faire un reset hard. Cela annulera sans confirmation tout votre travail !
+
+\begin{itemize}
+\item Annuler les commits et perdre tous les changements
+
+\begin{lstlisting}
+git reset --hard HEAD^
+\end{lstlisting}
+
+\item Annuler les modifications d’un fichier avant un commit
+
+Si vous avez modifié plusieurs fichiers mais que vous n’avez pas encore envoyé le commit et que vous voulez restaurer un fichier tel qu’il était au dernier commit :
+
+\begin{lstlisting}
+git checkout nom_du_fichier
+\end{lstlisting}
+
+\item Annuler/Supprimer un fichier avant un commit
+
+Supposer que vous venez d’ajouter un fichier à Git avec git add et que vous vous apprêtez à le "commiter". 
+Cependant, vous vous rendez compte que ce fichier est une mauvaise idée et vous voulez annuler votre git add.
+
+Il est possible de retirer un fichier qui avait été ajouté pour être « commité » en procédant comme suit :
+
+\begin{lstlisting}
+git reset HEAD -- nom_du_fichier_a_supprimer
+\end{lstlisting}
+\end{itemize}
+
+\section{Travailler avec Github}
+
+Récuperer le repo sur Github :
+
+\begin{lstlisting}
+git clone https://github.com/JuvignyEnsta/Projet
+\end{lstlisting}
+
+Mon repo est composé d'au moins deux branches.
+
+\begin{itemize}
+\item[\textbf{develop}] : dédié au développement et résolution de bug. 
+\item[\textbf{master}] : reflète le code en production. Personne ne doit travailler directement sur cette branche.
+\end{itemize}
+
+Pour récupérer votre branche develop
+
+\begin{lstlisting}
+git branch -a
+git checkout origin/develop
+git checkout -b develop origin/develop
+git branch
+\end{lstlisting}
+
+\noindent\textbf{Développement} : Branche develop\\
+\textbf{Production} : Branche Master
+
+Pour développer sur la branche develop puis soumettre sur la branche master :
+
+\begin{lstlisting}
+# On se met sur la branche master
+git checkout master
+# On merge la branche develop
+git merge develop
+# Pour pousser les changements
+git push origin master
+# Penser à revenir sur develop
+git checkout develop
+\end{lstlisting}
+
+\end{document}
