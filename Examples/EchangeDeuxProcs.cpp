@@ -35,5 +35,5 @@ int main(int argc, char* argv[])
   fich << "proc n. " << rank << " : token = " << token << std::endl;
 
   MPI_Finalize();
-  return 1;
+  return EXIT_SUCCESS;
 }

@@ -13,22 +13,24 @@ int main(int nargs, char* argv[])
     printf("Je suis le processus %d sur %d\n", rank,nbp);
     printf("je m'execute sur %s\n", name);
 
-    int tag_to_send = 101*(rank+1);
-    printf("tag to send : %d\n", tag_to_send);
-    int tag_to_recv;
+    int tag = 1234;
+    
+    int msg_to_send = 101*(rank+1);
+    printf("msg to send : %d\n", msg_to_send);
+    int msg_to_recv;
     MPI_Status status;
     if ( rank == 0 ) {
-        MPI_Send(&tag_to_send, 1, MPI_INT, 
-                 1, 101, MPI_COMM_WORLD);
-        MPI_Recv(&tag_to_recv, 1, MPI_INT, 
-                 1, 101, MPI_COMM_WORLD, &status);
+        MPI_Send(&msg_to_send, 1, MPI_INT, 
+                 1, tag, MPI_COMM_WORLD);
+        MPI_Recv(&msg_to_recv, 1, MPI_INT, 
+                 1, tag, MPI_COMM_WORLD, &status);
     } else {
-        MPI_Recv(&tag_to_recv, 1, MPI_INT, 
-                 0, 101, MPI_COMM_WORLD, &status);
-        MPI_Send(&tag_to_send, 1, MPI_INT, 
-                 0, 101, MPI_COMM_WORLD);
+        MPI_Recv(&msg_to_recv, 1, MPI_INT, 
+                 0, tag, MPI_COMM_WORLD, &status);
+        MPI_Send(&msg_to_send, 1, MPI_INT, 
+                 0, tag, MPI_COMM_WORLD);
     }
-    printf("%d : tag received : %d\n", rank,tag_to_recv);
+    printf("%d : msg received : %d\n", rank,msg_to_recv);
     MPI_Finalize();
     return 0;
 }
