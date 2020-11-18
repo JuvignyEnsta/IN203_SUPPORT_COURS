@@ -26,7 +26,7 @@
 
 \title[Architectures parallèles\hspace{2em}]{Calcul parallèle distribué}
 \author[Xavier JUVIGNY]{Xavier JUVIGNY}
-\date{14 Novembre 2019}
+\date{\today}
 
 \institute{ONERA}
 
@@ -1219,19 +1219,19 @@ if ( rank == 0 )// rank == 0 => master
 {
   int count_task = 0;
   for ( int i = 1; i < nbp; ++i ) {
-     send(count_task, 1, MPI_INT, i, ... );     
+     send(&count_task, 1, MPI_INT, i, ... );     
      count_task += 1;
   }
   while (count_task < nb_tasks) {
     // status contiendra le numéro du proc ayant envoyé
     // le résultat... : status.MPI_SOURCE en MPI
-    recv(&result, ..., MPI_ANY_SOURCE, ..., &status );
-    send(count_task, 1, MPI_INT, result[0], ... );     
+    recv(result, ..., MPI_ANY_SOURCE, ..., &status );
+    send(&count_task, 1, MPI_INT, status.MPI_SOURCE, ... );     
     count_task += 1;    
   }
-  // On envoie un signal de terminaison à tous
-  // les processus
-  for ( int i = 1; i < nbp; ++i ) send(-1, 1, MPI_INT, i, ... );
+  // On envoie un signal de terminaison à tous les processus
+  count_task = -1;
+  for ( int i = 1; i<nbp; ++i ) send(&count_task, 1, MPI_INT, i, ... );
 }
 \end{lstlisting}
 \end{frame}

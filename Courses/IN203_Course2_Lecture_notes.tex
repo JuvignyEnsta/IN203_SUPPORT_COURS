@@ -49,10 +49,11 @@
 
 \title{Programmation parallèle sur mémoire distribuée}
 \author{Juvigny Xavier}
-\date{Novembre 2019}
+\date{\today}
 
-\newtheorem{prop}{Propriétés }
-\newtheorem{remark}{Remarque }
+\newtheorem{prop}{Propriétés}
+\newtheorem{remark}{Remarque}
+\newtheorem{defi}{Définition}
 
 \begin{document}
 \maketitle
@@ -60,18 +61,19 @@
 
 \section{Architecture des calculateurs à mémoire distribuée}
 
-L'efficacité d'une machine multi--cœurs dépend de l'organisation de sa mémoire qui, pour être efficace demande une architecture complexe 
-et onéreuse dont le coût est sur-linéaire au nombre de cœurs. Afin d'obtenir un calculateur performant sans être prohibitif, 
-chaque unité de calcul ( en général multi--cœurs ) possède  sa propre mémoire vive. Un ensemble formé d'unités de calcul et 
-d'une mémoire vive s'appelle un \textbf{nœud de calcul} sur les machines distribuées. 
+Si une machine multi--c{\oe}ur demande moins de changement drastique quant à l'architecture logicielle et aux algorithmes
+utilisés, elle requière néanmoins pour être efficace une organisation complexe de sa mémoire organisée en différents
+niveaux de mémoire cache dont le coût est sur-linéaire au nombre de c{\oe}urs utilisés. 
 
-Ces différents n{\oe}uds de calcul échangent des données au travers d'un bus spécialisé ou  plus souvent au travers d'un réseau de type 
-Gigabit. On parle alors d'un calculateur \textsl{à mémoire distribuée}. Ce type de calculateur a un coût de fabrication linéaire en 
-fonction du nombre d'unités de calcul sur le réseau du calculateur. 
+Afin d'obtenir un calculateur performant sans être pour autant prohibitif, on optera plutôt pour une machine dont chaque
+unité de calcul ( en général multi--cœurs mais sans un nombre prohibitif de c{\oe}urs ) possède  sa propre mémoire vive. 
+On appelera un tel ensemble formé de c{\oe}urs de calcul et  d'une mémoire vive s'appelle un \textbf{nœud de calcul}.
 
-La programmation de ces calculateurs demande une mise en œuvre spécifique et fréquemment des algorithmes spécifiques permettant d'exploiter efficacement la capacité de calcul de la machine.
+Ces différents n{\oe}uds de calcul échangent des données au travers d'un bus spécialisé ou  plus souvent au travers d'un réseau de type Gigabit. On parle alors d'un calculateur \textsl{à mémoire distribuée}. Ce type de calculateur a un coût de fabrication \textsl{linéaire} en fonction du nombre d'unités de calcul sur le réseau du calculateur. 
 
-Ce type de calculateur permet d'exploiter simultanément plusieurs dizaines de milliers d'unités de calcul. Cependant, la lenteur relative des réseaux ou des bus ainsi que le ''degré de parallélisme'' de l'algorithme employé limitent la rapidité de traitement des donnees
+La programmation de ces calculateurs demande une mise en œuvre spécifique et fréquemment des algorithmes spécifiques permettant d'exploiter efficacement la capacité de calcul de ces machines.
+
+Ce type de calculateur permet d'exploiter simultanément plusieurs centaines de milliers d'unités de calcul. Cependant, la lenteur relative des réseaux ou des bus ainsi que le ''degré de parallélisme'' de l'algorithme employé peuvent limiter la rapidité de traitement des données
 
 \begin{figure}[h]
 \begin{center}
@@ -115,33 +117,42 @@ Ce type de calculateur permet d'exploiter simultanément plusieurs dizaines de m
 \label{fig:archmemdistrib}
 \end{figure}
 
-Les réseaux connectant les différents n{\oe}uds de calcul offrent des topologies variées. 
-Il peut être important d'avoir en tête la topologie du calculateur employé. 
-En effet, les données échangées via le réseau transiteront selon la topologie du réseau 
-via d'autres n{\oe}uds de calcul, ce qui ralentira les échanges de données en fonction 
-du nombre d'unités de calcul intermédiaires par lesquelles les données transiteront. 
-Pour calculer le nombre maximal de nœuds intermédiaires,  on définit pour un réseau la 
+Les calculateurs que l'on peut trouver sur le marché offrent des topologies variées pour le réseau interconnectant
+les différents n{\oe}uds de calcul. Il est important lors d'une mise en {\oe}uvre sur un calculateur
+spécifique d'avoir en tête cette topologie. En effet, les données échangées au travers du réseau 
+transiteront, selon la topologie du réseau, 
+via d'autres n{\oe}uds de calcul, ce qui aura pour effet de ralentir les échanges de données en fonction 
+du nombre d'unités de calcul intermédiaires par lesquelles les données transiteront.
+
+Lorsqu'on exécute un algorithme parallèle qui n'exploite pas particulièrement la topologie du réseau
+du calculateur (par exemple si le logiciel exécuté a été conçu pour diverses plateformes), on peut
+s'employer à estimer la pénalité maximale qu'on risque de subir en terme de performance en calculant 
+le nombre maximal de nœuds intermédiaires. Pour cela, nous allons définir pour un réseau la 
 distance entre deux nœuds et son diamètre :
 
-%\begin{theorem}
+\begin{defi}
 On appelle \textbf{distance entre deux nœuds} sur un réseau donné le minimum de nœuds
 intermédiaires par lesquels doivent transiter des données echangées entre les deux
 nœuds.
-%\end{theorem}
+\end{defi}
 
+\begin{defi}
 On appelle \textbf{diamétre d'un réseau} la distance maximale entre
 deux nœuds du réseau. 
+\end{defi}
 
 Pour la commodité de l'exposé, et en adéquation avec la vue programmeur
-fournie par les bibliothèques de calcul parallèle distribuée, on numérote
+fournie par les bibliothèques de calcul parallèle distribuée comme MPI, on numérote
 chacun des $N$ nœuds de calcul de façon unique à l'aide d'un nombre entre
 0 et $N-1$.
 
+Passons en revue diverses topologies communément employées sur les calculateurs à mémoire distribuée.
+
 \subsection{Topologie linéaire}
 
-Les $N$ nœuds de calcul sont reliés de sorte qu'on peut trouver une numérotation
-des nœuds de calcul tel qu'un nœud $i$ est seulement lié directement au
-nœud $i-1$ ( si $ i > 0$ ) et au nœud $i+1$ ( si $i < N-1$ ).
+Les $N$ nœuds de calcul sont reliés de tel manière qu'on peut trouver une numérotation
+de ces nœuds tel qu'un nœud $i$ est lié directement aux seuls
+nœud $i-1$ ( si $ i > 0$ ) et $i+1$ ( si $i < N-1$ ).
 
 \begin{figure}
 \begin{center}
@@ -158,12 +169,12 @@ nœud $i-1$ ( si $ i > 0$ ) et au nœud $i+1$ ( si $i < N-1$ ).
 \end{figure}
 
 
-Le diamètre de ce réseau est $N-1$.
+Un calcul rapide et trivial montre que le diamètre de ce réseau est de $N-1$.
 
 \subsection{Topologie anneau}
 
 La topologie de ce réseau est similaire à celui d'un réseau linéaire.
-Seule différence notable, le nœud 0 est relié au nœud $N-1$.
+Seule différence notable, le nœud 0 est relié au nœud numéroté $N-1$.
 
 \begin{figure}
 \begin{center}
@@ -190,14 +201,13 @@ de nœud $N$ est pair, $\frac{N-1}{2}$ sinon.
 Le réseau connectant les $N=W\times H$ nœuds est topologiquement équivalent à
 une grille de $W\times H$ nœuds.
 
-0
-On voit, en considérant la communication du premier n{\oe}ud avec le dernier
-n{\oe}ud que le diamètre d'un réseau sur grille est égal à $W+H-2$.
+Deux n{\oe}uds dont la distance est maximale sont le n{\oe}ud zéro et le dernier
+n{\oe}ud $N-1$. On en déduit le diamètre du réseau grille qui vaut donc $W+H-2$.
 
 \subsection{Topologie hyper cube}
 
 La topologie hyper cube est une topologie telle que la connection des n{\oe}uds de calcul
-est équivalente à celle reliant les sommets d'un hyper cube de dimension $n$.
+deux à deux est équivalente aux arêtes reliant les sommets d'un hyper cube de dimension $n$.
 
 \begin{figure}[h]
 \centering
@@ -206,7 +216,8 @@ est équivalente à celle reliant les sommets d'un hyper cube de dimension $n$.
 \begin{tikzpicture}
 \node[text width=1em, fill=yellow, drop shadow]  (N0) {\scriptsize $N_{0}$};
 \end{tikzpicture}
-\caption{$\mathcal{C}_{0}$ : hypercube de dimension 0}\label{fig:HypCub0}
+\caption{$\mathcal{C}_{0}$ : hypercube de dimension 0}
+\label{fig::HypCub0}
 \end{subfigure}
 \qquad
 \begin{subfigure}[c]{0.46\textwidth}
@@ -216,7 +227,8 @@ est équivalente à celle reliant les sommets d'un hyper cube de dimension $n$.
 \node[right=2em of N0.east, text width=1em, fill=yellow, drop shadow] (N1) {\scriptsize $N_{1}$};
 \draw[thick,red] (N0) -- (N1);
 \end{tikzpicture}
-\caption{$\mathcal{C}_{1}$ : hypercube de dimension 1}\label{fig:HypCub1}
+\caption{$\mathcal{C}_{1}$ : hypercube de dimension 1}
+\label{fig::HypCub1}
 \end{subfigure}
 
 \begin{subfigure}[c]{0.46\textwidth}
@@ -231,7 +243,8 @@ est équivalente à celle reliant les sommets d'un hyper cube de dimension $n$.
 \draw[thick,red](N2) -- (N3);
 \draw[thick,red](N1) -- (N3);
 \end{tikzpicture}
-\caption{$\mathcal{C}_{2}$ : hypercube de dimension 2}\label{fig:HypCub2}
+\caption{$\mathcal{C}_{2}$ : hypercube de dimension 2}
+\label{fig::HypCub2}
 \end{subfigure}
 \qquad
 \begin{subfigure}[c]{0.46\textwidth}
@@ -258,7 +271,8 @@ est équivalente à celle reliant les sommets d'un hyper cube de dimension $n$.
 \draw[thick,red!50!blue](N2) -- (N6);
 \draw[thick,red!50!blue](N3) -- (N7);
 \end{tikzpicture}
-\caption{$\mathcal{C}_{3}$ : hypercube de dimension 3}\label{fig:HypCub3}
+\caption{$\mathcal{C}_{3}$ : hypercube de dimension 3}
+\label{fig::HypCub3}
 \end{subfigure}
 
 \begin{subfigure}[c]{0.46\textwidth}
@@ -316,42 +330,64 @@ est équivalente à celle reliant les sommets d'un hyper cube de dimension $n$.
 \draw[green!25] (N6) -- (NE);
 \draw[green!25] (N7) -- (NF);
 \end{tikzpicture}
-\caption{$\mathcal{C}_{4}$ : hypercube de dimension 4}\label{fig:HypCub4}
+\caption{$\mathcal{C}_{4}$ : hypercube de dimension 4}
+\label{fig::HypCub4}
 \end{subfigure}
-\caption{Réseau hyper cube de dimensions 0 à 4. Les nœuds sont numérotés en binaire selon la numérotation de Gray.}
+\caption{Réseau hypercube de dimensions 0 à 4. Les nœuds sont numérotés en binaire selon la numérotation de Gray.}
+\label{fig::hypercube}
 \end{figure}
 
-La construction d'un hypercube de dimension $n$ se fait de façon itérative à partir de l'hypercube de
-dimension 1 ( l'hypercube de dimension 0 étant un cas à part, constitué d'un et un seul nœud de calcul ) :
+Un hypercube de dimension $n$ se construit de façon récursive en se basant sur l'hypercube de dimension $n-1$,
+en numérotant les n{\oe}uds en binaire et en remarquant que l'hypercube de dimension zéro est constitué d'un et un seul n{\oe}ud numéroté avec la valeur zéro et que l'hypercube de dimension un est constitué de deux n{\oe}uds numérotés respectivement zéro et un, reliés par une connexion entre les deux n{\oe}uds (voir figure \ref{fig::HypCub1})
 
+Pour un hypercube $\mathcal{C}_{n}$ de dimension $n$ supérieure à un, on considère l'hypercube $\mathcal{C}_{n-1}$ de dimension $n-1$ que nous allons dupliquer de la manière suivante :
 \begin{itemize}
-\item L'hypercube $\mathcal{C}_{1}$ de dimension 1 est constitué de deux nœuds numérotés 0 et 1 
-reliés par une connexion directe ( voir figure \ref{fig:HypCub1} );
-\item Pour passer d'un hypercube de dimension $n-1$ à un hypercube de dimension $n$ ( $n>1$ ), on fabrique
-une copie du réseau hypercube de dimension $n-1$ en rajoutant ( en binaire ) un 0 à gauche dans la numérotation
-des nœuds d'origine et un 1 à gauche dans la numérotation des nœuds copiés. On relie ensuite par une
-connexion directe chaque nœud d'origine avec son équivalent dans la copie.
+    \item On effectue une première copie de $\mathcal{C}_{n-1}$ en rajoutant le chiffre \textcolor{red}{zéro} à gauche de la numérotation binaire. Par exemple, si dans $\mathcal{C}_{n-1}$, un n{\oe}ud a pour numérotation $1001$, il aura pour nouvelle numérotation $01001$, et si un autre n{\oe}ud a pour numérotation $0110$, il aura pour nouvelle numérotation
+    $00110$.
+    \item On effectue une deuxième copie de $\mathcal{C}_{n-1}$ en rajoutant le chiffre \textcolor{red}{un} à gauche de la numérotation binaire. Par exemple, si dans $\mathcal{C}_{n-1}$, un n{\oe}ud a pour numérotation $1001$, il aura pour nouvelle numérotation $11001$, et si un autre n{\oe}ud a pour numérotation $0110$, il aura pour nouvelle numérotation
+    $10110$.
+    \item On relie ensuite deux n{\oe}uds appartenant chacun à une copie différente de $\mathcal{C}_{n-1}$
+    par une connexion directe si et seulement si leur numérotation dans $\mathcal{C}_{n-1}$ est la même. Ainsi,
+    si on considère le n{\oe}ud $01001$ de la première copie et le n{\oe}ud $11001$ de la deuxième copie, ils sont
+    tous les deux issus du n{\oe}ud $1001$ de $\mathcal{C}_{n-1}$, et doivent donc être reliés par une connexion directe.
+    En revanche, les n{\oe}uds $01001$ et $10110$ ne sont pas issus du même n{\oe}ud de $\mathcal{C}_{n-1}$ et
+    ne doivent donc pas être reliés.
 \end{itemize}
 
-Par exemple, pour construire un hypercube $\mathcal{C}_{2}$ de dimension 2, 
-on démarre de l'hypercube $\mathcal{C}_{1}$ dont on copie les sommets en rajoutant
-un bit à gauche de la numérotation binaire, valant 0 pour le graphe original et
-1 pour la copie. On obtient ainsi quatres nœuds numérotés $00,01,10$ et $11$
-reliés comme dans la figure \ref{fig:HypCub2}.
+Par exemple, pour construit $\mathcal{C}_{2}$, l'hypercube de dimension deux,
+on duplique l'hypercube de dimension un qui contient
+deux sommets connectés $0$ et $1$, en un premier hypercube de dimension un contenant les sommets
+connectés $00$ et $01$ et en deuxième hypercube de dimension un contenant les sommets connectés $10$ et $11$.
+On relie maintenant le sommet $00$ avec le sommet $10$ et le sommet $01$ avec le sommet $11$. On
+obtient bien in fine un carré (hypercube de dimension deux, voir figure \ref{fig::HypCub2}).
 
-Pour les dimensions supérieurs, on reitère la procédure pour obtenir des hypercubes de dimension
-3, 4 ou supérieur, comme sur les figures \ref{fig:HypCub3} et \ref{fig:HypCub4}.
+Pour les dimensions supérieures, on reitère la procédure pour obtenir des hypercubes de dimension
+3, 4 ou supérieure, comme sur les figures \ref{fig::HypCub3} et \ref{fig::HypCub4}.
 
-La numérotation obtenue avec la construction des hypercubes se nomme le \textsl{code Gray} ( sur $n$
+La numérotation obtenue en appliquant l'algorithme de construction des hypercubes se nomme le \textsl{code Gray} ( sur $n$
 bits, $n$ étant la dimension de l'hypercube ). Cette numérotation possède de nombreuses propriétés
-intéressantes, dont la propriété suivante :
+intéressantes, dont les propriétés suivantes, qu'on peut démontrer trivialement à partir de l'algorithme de construction :
+
+\begin{prop}
+Deux n{\oe}uds d'un hypercube $\mathcal{C}_{n}$ de dimension $n$ sont directement connectés par un arête si et seulement
+si leurs numérotations binaires de diffère que d'un seul bit. 
+\end{prop}
+
+Par exemple, dans un hypercube $\mathcal{C}_{4}$ de dimension quatre, les n{\oe}uds numérotés
+\textsl{01\textcolor{red}{0}1} et \textsl{01\textcolor{red}{1}1} ont une arête les reliant
+tandis que les n{\oe}uds numérotés \textsl{01\textcolor{red}{01}} et \textsl{01\textcolor{red}{10}}
+n'ont pas de connection directe.
+
+On en vient donc à la propriété suivante :
 
 \begin{prop}
 La distance entre deux nœuds $i$ et $j$ dans un hypercube de dimension $n$ est le nombre de bits différents
 dans leur numérotation binaire.
 \end{prop}
 
-Par exemple, la distance entre les nœuds ( numérotés en binaire ) $011001$ et $110011$ est de 3 ( trois bits
+Par exemple, dans un hypercube $\mathcal{C}_{6}$ de dimension six, la distance entre les nœuds ( numérotés en binaire ) 
+\textsl{\textcolor{red}{0}1\textcolor{red}{1}0\textcolor{red}{0}1} et 
+\textsl{\textcolor{red}{1}1\textcolor{red}{0}0\textcolor{red}{1}1} est de 3 ( trois bits
 de différents entre les deux numéros ).
 
 On en déduit directement le diamètre du réseau hypercube :
@@ -363,7 +399,7 @@ Un réseau hypercube de dimension $n$ ( contenant $2^{n}$ nœuds de calcul ) a u
 Les réseaux hypercubes sont des réseaux proposant des connections très riches,
 et permettant d'obtenir de bonnes performances en terme d'échanges de données
 et de résistance aux pannes réseaux sans pour autant avoir un coût trop élevé 
-( cau contraire d'un graphe complet où chaque nœud est relié à tous les autres ).
+( contrairement à un graphe complet (un cluster) où chaque nœud est relié à tous les autres ).
 
 \section{Les différents modèles de programmation parallèle}
 
@@ -412,8 +448,7 @@ if ( processus == 1 )
 \section{Programmation parallèle sur machines à mémoire distribuée}
 
 Dans ce modèle de programmation, plusieurs processus font tourner 
-simultanément des programmes,
-identiques ou non, possédant chacun leur propre espace mémoire privé ( en général
+simultanément des programmes, identiques ou non, possédant chacun leur propre espace mémoire privé ( en général
 une mémoire physique différente mais on peut très bien avoir des processus qui
 se partagent une même mémoire physique ).
 
@@ -432,9 +467,10 @@ unique, en général un entier compris entre zéro et le nombre
 de processus utilisés moins un.
 
 Il se peut également qu'un processus reçoit des données provenant de plusieurs
-autre processus ef il est alors nécessaire de distinguer la provenance de ces messages.
-Il est donc nécessaire de pouvoir identifier l'expéditeur du message. De plus, il
-arrive souvent qu'un processus envoi plusieurs messages à un même destinataire. Or
+autre processus. Il est alors nécessaire de distinguer la provenance de ces messages, c'est-à-dire
+de pouvoir identifier l'expéditeur du message.
+
+De plus, il arrive souvent qu'un processus envoie plusieurs messages à un même destinataire. Or
 sur le réseau internet, le protocole ne garantit pas que l'ordre d'envoi
 des messages soit respecté à la réception. Pour identifier les messages provenant
 d'un même expéditeur, il est nécessaire de rajouter une étiquette à chaque message
@@ -485,13 +521,18 @@ T(n) = T_{\mbox{Startup}} + \frac{n}{\mbox{Débit}}
 
 Cette formule n'est valable que si les deux processus sont directement reliés
 par une connection éthernet. Dans le cas où la distance entre les deux processus
-est supérieur à un, il faut compter le temps de dialogue avec les n{\oe}uds
+est supérieure à un, il faut compter le temps de dialogue avec les n{\oe}uds
 intermédiaires et le temps de transfert des messages par ces n{\oe}uds.
 
 Sur un réseau éthernet classique, le coût en temps d'un échange peut varier
 d'une exécution à l'autre. Des collisions de messages ou des corrections
 d'erreur font varier le coût d'un échange et la formule n'est utile
 qu'à titre indicatif dans ce contexte.
+
+Enfin, remarquons que lorsqu'on fait tourner un programme parallèle sur une seule machine
+constituée de plusieurs c{\oe}urs en y lançant plusieurs processus simultanément, l'échange de message
+se fait via la mémoire et non internet. Les temps d'envoie et de réceptions y seront donc bien moins
+pénalisant que si on exécuter notre programme sur des n{\oe}uds de calcul différents.
 
 La bibliothèque MPI utilisée en TD propose plusieurs protocoles d'envoi/réceptions.
 
@@ -589,7 +630,7 @@ jargon MPI ) ou bien rendre tout de suite la main.
   \caption{Exemple message synchrone quand la réception est exécutée avant l'envoi}
   \end{figure}
 
-Dans le cas d'un message non bloquant, il est nécessaire plus loin dans le code
+Dans le cas d'un message non bloquant, il est nécessaire en amont du code
 de s'assurer que l'envoi ( ou la réception ) a bien été effectuée. Pour cela
 on disposera de fonction permettant :
 
@@ -626,8 +667,8 @@ assiettes et cinq fourchettes utilisées quand un philosophe a faim.
 Manger des spaghetti demande aux philosophes
 d'utiliser les fourchettes des deux côtés ( ?! ). 
 
-Un philosophe repose sa
-fourchette quand il n'a plus faim. 
+Un philosophe repose ses
+deux fourchettes quand il n'a plus faim. 
 
 Une situation d'interblocage apparaît
 dans ce cas quand tous les philosophes présents tiennent une fourchette dans
@@ -683,11 +724,11 @@ else
 }
 \end{lstlisting}
 
-Par défaut, dans la bibliothèque MPI, l'envoi est bufférisée et asynchrone tandis que la réception est
-synchrone et non bufférisée.
+Par défaut, dans la bibliothèque MPI, l'envoi est bufférisée et asynchrone si la quantité de donnée n'est pas trop
+importante tandis que la réception est synchrone et non bufférisée.
 
 \underline{\textcolor{red}{Exercice} :} : Expliquez pourquoi le code MPI ci dessous n'est pas sûr et peut par moment
-conduire à un interblocage.
+conduire à un interblocage et à un autre moment se terminer normalement :
 
 \begin{lstlisting}
 MPI_Comm_rank(comm, &myRank ) ;
@@ -713,8 +754,8 @@ parallèle.
 
 La majorité de ces opérations peuvent se programmer à l'aide des échanges de
 message point à point, mais l'optimisation des échanges de message pour ces
-types d'opérations vont dépendre fortement de topologie du réseau, ce qui nuit
-à la portabilité du code sur d'autres machines aux topologies réseau différentes. 
+types d'opérations vont dépendre fortement de la topologie du réseau, ce qui nuit
+à la portabilité du code sur d'autres machines aux topologies réseaux différentes. 
 Aussi des bibliothèques comme MPI proposent ces opérations dans leurs APIs en garantissant
 que les échanges de message seront adaptés à la topologie réseau sur lequel le code sera
 exécuté en parallèle.
@@ -1237,13 +1278,14 @@ if ( rank == 0 )// rank == 0 => master
     // status contiendra le numéro du proc ayant envoyé
     // le résultat... : status.MPI_SOURCE en MPI
     recv(&result, ..., MPI_ANY_SOURCE, ..., &status );
-    send(count_task, 1, MPI_INT, result[0], ... );     
+    send(&count_task, 1, MPI_INT, status.MPI_SOURCE, ... );     
     count_task += 1;    
   }
   // On envoie un signal de terminaison à tous
   // les processus
+  count_task = -1;
   for ( int i = 1; i < nbp; ++i ) {
-     send(-1, 1, MPI_INT, i, ... );     
+     send(&count_task, 1, MPI_INT, i, ... );     
   }  
 } else
 {// Cas où je suis un travailleur
@@ -1267,7 +1309,7 @@ MPI_Finalize();
 
 \paragraph{Granularité parallèle} : On a vu qu'un envoi de message engendré 
 un coût fixe d'initialisation et un coût linéaire par rapport à la quantité
-de donnée envoyé ( dépendant du débit supporté par le réseau ). Si on divise
+de donnée envoyée ( dépendant du débit supporté par le réseau ). Si on divise
 trop le travail entre les processus, le temps de communication deviendra trop
 importante par rapport à la quantité de travail que devra faire
 un processus entre deux échanges de message. Au final, on risque de passer plus
@@ -1288,4 +1330,5 @@ Enfin, signalons que pour obtenir une bonne performance de notre code parallèle
 on peut toujours utiliser les envois/réceptions asynchrones afin de couvrir
 nos échanges de message par des calculs sur d'autres données, non échangées
 à ce moment là.
+
 \end{document}
