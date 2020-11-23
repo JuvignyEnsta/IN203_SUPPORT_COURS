@@ -7,7 +7,8 @@
  
  void printDuration(std::chrono::steady_clock::time_point start, std::chrono::steady_clock::time_point end, const char *message) {
          auto diff = end - start;
-         std::cout << message << ' ' << std::chrono::duration <double, std::milli> (diff).count() << " ms\n";
+         std::cout << message << ' ' << std::chrono::duration <double, std::milli> (diff).count() << " ms"
+                   << std::flush << std::endl;
  }
  
  template<typename T>
@@ -39,9 +40,9 @@
      }
  
      // Sort data using different execution policies
-     std::cout << "std::execution::seq\n";
+     std::cout << "std::execution::seq" << std::flush << std::endl;
      test(std::execution::seq, data, repeat, "Elapsed time");
  
-     std::cout << "std::execution::par\n";
+     std::cout << "std::execution::par" << std::flush << std::endl;
      test(std::execution::par, data, repeat, "Elapsed time");
  }

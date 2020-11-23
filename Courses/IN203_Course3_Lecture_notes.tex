@@ -33,6 +33,8 @@
 
 \definecolor{lightblue}{RGB}{0,200,255} 
 \definecolor{paper}{RGB}{239,227,157}
+\definecolor{darkgreen}{RGB}{0,127,0} 
+\definecolor{darkred}{RGB}{127,0,0} 
 
 \pgfdeclarelayer{background}
 \pgfdeclarelayer{foreground}
@@ -57,6 +59,7 @@
 
 \newtheorem{prop}{Propriétés }
 \newtheorem{remark}{Remarque }
+\newtheorem{definition}{Définition }
 
 \begin{document}
 \maketitle
@@ -64,10 +67,12 @@
 
 \section{Modèles de programmation sur ordinateurs parallèles à mémoire partagée}
 
-\subsection{Notion de thread}
+\subsection{Notion de thread et mise en {\oe}uvre en C++ 2011}
 
-Avant de comprendre ce qu'est un thread, il faut tout d'abord savoir ce qu'est un processus.
-Un processus est créé par le système d'exploitation et demande lors de sa création une
+Pour comprendre ce qu'est un thread, il est nécessaire au préalable d'avoir une bonne notion de ce
+qu'est un processus en informatique.
+
+En informatique, \textbf{un processus} est l’instance d’un programme informatique en cours d’exécution par un ou plusieurs threads d’un ordinateur. Concrètement, cela signifie qu’un processus permet l’exécution de diverses instructions par le microprocesseur, en fonction du programme en cours de fonctionnement. Un processus contient à la fois le code du programme mais également son activité. Il demande lors de sa création une
 importante ressource CPU. Les processus contiennent des informations sur les ressources
 du programme et l'état d'exécution du programme, à savoir :
 \begin{itemize}
@@ -84,7 +89,9 @@ du programme et l'état d'exécution du programme, à savoir :
  \item Les outils d'intercommunication entre processus : pipes, sémaphores, mémoire partagée,\ldots
 \end{itemize}
 
-On peut alors donner la définition d'un thread : 
+\textbf{Le thread}, ou \textsl{fil d’exécution} en français, est un  processus et il permet d’exécuter des instructions de langage machine au sein du processeur. La spécificité du thread est qu’il laisse la possibilité à deux instances en train d’interpréter le même programme de s’exécuter en simultané au sein du même processeur. Il se singularise également par le fait qu'il partage la mémoire virtuelle d'un processus ainsi que diverses autres resources. Par contre, chaque thread possède sa propre pile d'exécution.
+
+Une définition d'un thread peut donc être la suivante  : 
 
 \underline{\textcolor{blue}{Définition} :} Un thread est un exécutable léger,
 créé par un processus et dont il partage le même espace mémoire. Le thread ne maintient
@@ -111,21 +118,58 @@ En résumé, un thread ( dans un environnement UNIX ) :
 
 Du fait que les threads partagent les mêmes ressources que le processus père :
 \begin{itemize}
- \item Un changement fait par un thread dans les ressources communes du processus père ( comme fermer un fichier 
- par exemple ) sera vu par tous les autres threads;
+ \item Un changement fait par un thread dans les ressources communes du processus père ( comme fermer un fichier par exemple ) sera vu par tous les autres threads;
  \item Deux pointeurs sur des threads différents auront la même donnée si ils pointent sur la même adresse ( virtuelle );
  \item Lire et écrire au même endroit mémoire par différents threads est possible mais demande une synchronisation par le programmeur.
 \end{itemize}
 
-On peut mesurer la légèreté de la création d'un thread en observant le tableau (\ref{tatab:pvst}).
+Avant C++ 2011, la création et la gestion des threads dépendaient fortement du système d'exploitation employé; chaque OS proposait sa propre API. Depuis la publication de la norme 2011 du C++, le langage propose
+une librairie standardisée permettant une même gestion des threads quelque soit le système d'exploitation
+sur lequel on compile les sources et exécute le programme. Cette bibliothèque standardisée se repose
+principalement sur la gestion des threads proposée par la norme posix d'unix (dont linux suit la norme).
+
+La création d'un thread provoque son exécution. Il suffit simplement de donner lors de la créatio du thread
+la fonction qu'il doit exécuter en parallèle de l'exécution du processus. Ainsi, un programme
+Helloworld affichant simultanément un message du processus et d'un thread, s'écrira de la manière suivante :
+
+\begin{lstlisting}
+#include <iostream>
+#include <thread>
+
+// Cette fonction sera appelée par un thread
+ void call_from_thread() {
+   std::cout << "Hello, World du thread" << std::flush << std::endl;
+}
+
+int main()
+{
+   // Exécution d'un thread
+   std::thread t1(call_from_thread);
+
+   std::cout << "Hello world du processus" << std::flush << std::endl;
+   //Join the thread with the main thread
+   t1.join();
+
+    return 0;
+}
+\end{lstlisting}
+
+La création du thread, au début de la fonction \texttt{main} appelle immédiatement après création du thread
+la fonction \texttt{call\_from\_thread} qui affichera un message pendant que le programme principal essaiera
+d'afficher un second message.
+
+On peut mesurer la légèreté de création d'un thread en observant le tableau (\ref{tatab:pvst}).
 
 Si les threads ont la réputation d'être diaboliques de part la relative complexité
-qu'ils peuvent engendre en programmation, c'est encore le meilleurs moyen de prendre
+qu'ils peuvent engendrer en programmation, c'est encore le meilleurs moyen de prendre
 avantage des c{\oe}urs multiples d'un ordinateur pour une application.
 
 Par défaut, un thread est \textbf{attaché} à son processus, c'est à dire qu'il est
-possible pour le processus d'attendre que le thread ait fini pour continuer
-l'exécution du programme.
+possible de synchroniser  le processus et le thread pour attendre que le thread ait fini son
+exécution afin de continuer l'exécution du programme par le processus. C'est la méthode \texttt{join}
+qui permet au processus d'attendre la fin de l'exécution d'un thread. Ainsi dans le programme précédent,
+le processus principal attend que le thread \texttt{t1} finisse d'exécuter sa fonction affichant
+un message avant de quitter le programme grâce à la ligne \lstinline{t1.join();}.
 
 \begin{figure}[h]
 \begin{center}
@@ -178,131 +222,125 @@ avec la fin du thread pour s'assurer qu'il se termine bien avant le programme pr
  \label{tab:pvst}
 \end{table}
 
-Dans le cas d'un thread autonome, ne dépendant pas des resources du programme principal, il est possible
-de le "détacher" de sorte qu'il continue à s'exécuter même après la fin du programme principal ( il devient alors
-en terme unix ce qu'on appelle un daemon ).
+Il est possible également de créer un thread \texttt{t2} à partir d'un thread \texttt{t1}. Là encore,
+une synchronisation du thread \texttt{t2} est nécessaire dans l'exécution du thread \texttt{t1} pour
+que \texttt{t1} attendent la fin de l'exécution de \texttt{t2} avant de finir lui-même son exécution,
+sous peine d'obtenir une levée d'exception de type \texttt{system\_error}.
 
-\subsection{hyperthreading}
+Cependant, il est possible dans ce cas de "détacher" le thread \texttt{t2} du thread \texttt{t1}, c'est à dire
+de faire en sorte que le thread \texttt{t2}, créé par \texttt{t1} continue à s'exécuter bien que \texttt{t1} ait
+été détruit après son exécution (le thread \texttt{t2} n'est pas détruit à la destruction de \texttt{t1}),
+cependant il est important de noter que le thread détaché s'arrête lorsqu'on quitte le programme principal
+comme cela est illustré et commenté dans le programme \texttt{example\_detach\_thread.cpp} donné dans les exemples.
 
-Sur les CPUs modernes, les concepteurs ont mis deux fois plus de décodeur d'instructions
-(ALU) que d'unités calculatoires ( entiers ou réels ). L'intérêt d'en mettre deux fois plus est
+Notons au passage qu'il est également facile (contrairement aux posix thread du C !) de passer des arguments
+à une fonction qui doit être exécutée par un thread :
+\begin{lstlisting}
+void affichage_periodique(int id, int n)
+{
+  ...
+}
+
+int main()
+{
+    ...
+    std::thread t1(affichage_periodique, 1,  5);
+    ...
+    t1.join();
+    ...
+\end{lstlisting}
+
+Il suffit lors de la création du thread de faire suivre le nom de la fonction à exécuter par les arguments
+attendues par cette fonction. Attention cependant aux références, où il faut "repréciser" qu'on les passe
+en argument lors de l'appel de la fonction par le thread (cela est dû aux mécanismes sous-jacent du C++
+et non aux threads proprement dit !). Voir par exemple l'extrait de code à la figure (\ref{lst::ref_et_cref}).
+
+\begin{figure}[ht]
+\begin{lstlisting}
+void compteur_periodique(const int& nb_max_sec, int& secondes)
+{
+  ...
+}
+
+int main()
+{
+    int max_sec = 20;
+    int secondes;
+    ...
+    std::thread t(compteur_periodique, std::cref(nb_max_sec), 
+                  std::ref(secondes));
+    ...
+    t.join();
+    ...
+\end{lstlisting}
+\caption{Extrait de l'exemple \texttt{ref\_et\_cref\_pour\_les\_threads.cpp}}
+\label{lst::ref_et_cref}
+\end{figure}
+
+Une question importante qui vient avec la programmation multi-threads est : \textsl{Combien de threads est-il raisonnable de lancer simultanément ?}.
+
+La réponse naïve serait de dire que le nombre de threads optimal est le nombre d'unités de calculs (c{\oe}urs) se trouvant sur la machine exécutant le code. Cependant, plusieurs autres paramètres devront être pris en compte pour espérer obtenir des accélérations significatives du code, à savoir :
+\begin{enumerate}
+  \item La prise en compte de l'hyperthreading
+  \item Le goulot d'étranglement que représente l'accès à la mémoire vive
+\end{enumerate}
+
+\subsection{L'hyperthreading}
+
+
+Sur les CPUs modernes, les concepteurs ont mis deux fois plus de décodeurs d'instructions
+(ALU qui décode le langage machine décrivant le programme) que d'unités calculatoires ( entiers ou réels qui exécute les instructions liées au langage machine ). L'intérêt d'en mettre deux fois plus est
 de pouvoir ensuite exploiter sur une unité de calcul les différents circuits en parallèle : par exemple
 un thread pourra ainsi exécuter un calcul sur les entiers tandis qu'un deuxième thread, sur la même unité
 de calcul pourra exécuter un calcul sur des réels.
 
-Dans les cas réels d'utilisation de l'hyperthreading, on peut espérer au mieux un gain de trente pourcent
-sur le temps d'exécution du programme par rapport à une exécution en multithreading sans utilisation de
+Dans les cas réels d'utilisation de l'hyperthreading, on peut espérer en moyenne  un gain de trente pour cent sur le temps d'exécution du programme par rapport à une exécution en multithreading sans utilisation de
 l'hyperthreading ( il y aura dans ce cas un thread par unité de calcul ).
 
-Il faut cependant savoir que les systèmes d'exploitation actuels se basent sur le nombre de décodeurs
-d'instructions pour donner le nombre d'unités de calculs. Ainsi, si on tape sous Linux :
+Cela rend l'analyse hardware d'un ordinateur un peu complexe à lire sous un système d'exploitation.
+Sous windows, en allant dans le gestionnaire de tâche (accessible via la combinaison de touche Ctrl + Alt + del), sous l'onglet performance, on voit en bas à droite que l'ordinateur possède (par exemple) :
+\begin{itemize}
+  \item Un socket
+  \item Quatre c{\oe}urs
+  \item Huit processeurs logiques
+\end{itemize}
+
+De même, sous Linux, en tapant la commande 
 \begin{lstlisting}[language=sh]
- more /proc/cpuinfo
+ lscpu
 \end{lstlisting}
 
-on aura par exemple obtenir la sortie suivante :
+on obtiendra, par exemple, la sortie suivante :
 
 \begin{verbatim}
-processor	: 0
-vendor_id	: GenuineIntel
-cpu family	: 6
-model		: 60
-model name	: Intel(R) Core(TM) i7-4710HQ CPU @ 2.50GHz
-stepping	: 3
-microcode	: 0x200
-cpu MHz		: 2530.822
-cache size	: 6144 KB
-physical id	: 0
-siblings	: 8
-core id		: 0
-cpu cores	: 4
-apicid		: 0
-initial apicid	: 0
-fpu		: yes
-fpu_exception	: yes
-cpuid level	: 13
-wp		: yes
-flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc aperfmperf eagerfpu pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm epb tpr_shadow vnmi flexpriority ept vpid fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid xsaveopt dtherm ida arat pln pts
-bugs		:
-bogomips	: 4988.84
-clflush size	: 64
-cache_alignment	: 64
-address sizes	: 39 bits physical, 48 bits virtual
-power management:
-
-processor	: 1
 ...
-
-processor	: 2
-...
-
-processor	: 3
-...
-
-processor	: 4
-...
-
-processor	: 5
-...
-
-processor	: 6
-...
-
-processor	: 7
+CPU(s):                          8
+On-line CPU(s) list:             0-7
+Thread(s) per core:              2
+Core(s) per socket:              4
+Socket(s):                       1
 ...
 \end{verbatim}
 
-ou bien si on veut une information résumée :
-\begin{verbatim}
-[juvigny@Frickicare Ensta]$ lscpu
-Architecture :        x86_64
-Mode(s) opératoire(s) des processeurs : 32-bit, 64-bit
-Boutisme :            Little Endian
-Processeur(s) :       8
-Liste de processeur(s) en ligne : 0-7
-Thread(s) par cœur : 2
-Cœur(s) par socket : 4
-Socket(s) :           1
-Nœud(s) NUMA :       1
-Identifiant constructeur : GenuineIntel
-Famille de processeur : 6
-Modèle :             60
-Nom de modèle :      Intel(R) Core(TM) i7-4710HQ CPU @ 2.50GHz
-Révision :           3
-Vitesse du processeur en MHz : 3313.598
-Vitesse maximale du processeur en MHz : 3500,0000
-Vitesse minimale du processeur en MHz : 800,0000
-BogoMIPS :            4988.11
-Virtualisation :      VT-x
-Cache L1d :           32K
-Cache L1i :           32K
-Cache L2 :            256K
-Cache L3 :            6144K
-Nœud NUMA 0 de processeur(s) : 0-7
-\end{verbatim}
-
-Cependant, l'ordinateur sur lequel l'instruction a été exécuté ne contient que quatre unités de calculs !
-
-Si on regarde plus en détail les caractéristiques de chacun des ``processeurs'' détectés par Linux
-( dans la sortie donnée en exemple, on a mis des points de suspension pour les sorties des processeurs
-autres que zéro car le texte y est similaire ), on oberve une ligne marquée \verb@cpu cores     : 4@
-indiquant bien que le nombre d'unités de calcul est de quatre !
+où 
+\begin{itemize}
+  \item \verb@CPU(s)@ correspond aux processeurs logiques de Windows, c'est à dire au nombre de décodeurs d'instruction
+  \item \verb@Core(s) per socket@ correspond aux quatre c{\oe}urs de Windows, c'est à dire au nombre physique d'unité de calcul présent sur l'ordinateur
+  \item \verb@Socket(s)@ correspond lui-même à une architecture NUMA où on a plusieurs processeurs (et
+  leurs mémoires locales) reliés par une crossbar (voir le premier cours). Une seule socket ( ce que vous
+  devez logiquement tous avoir) correspond donc à un ordinateur sans architecture NUMA. 
+\end{itemize}
 
 \subsection{Communications efficaces pour l'échange des données}
 
-La motivation principale pour utiliser les threads dans un environnement parallèle haute performance est d'atteindre
-la performance maximale. En particuliers, si une application utilise MPI pour communiquer point à point, il y
-a de forte chance que les performances seront améliorées en utilisant des threads à la place.
+La motivation principale pour utiliser les threads dans un environnement parallèle haute performance est d'atteindre la performance maximale. En particuliers, si une application utilise MPI pour communiquer point à point, il y a de forte chance que les performances seront améliorées en utilisant des threads à la place.
 
-En effet, les bibliothèques MPI en mémoire partagée mettent en {\oe}uvre les communications point à point à l'aide de la
-mémoire partagée ce qui demande au moins une opération de copie mémoire ( de processus à processus ).
+En effet, les bibliothèques MPI en mémoire partagée mettent en {\oe}uvre les communications point à point à l'aide de la mémoire partagée ce qui demande au moins une opération de copie mémoire ( de processus à processus ).
 
-Pour les threads, il n'y a pas besoin de cette copie mémoire intermédiaire puisque les threads partagent le même espace mémoire
-que le processus père. Il n'y a donc pas de transfert mémoire.
+Pour les threads, il n'y a pas besoin de cette copie mémoire intermédiaire puisque les threads partagent le même espace mémoire que le processus père. Il n'y a donc pas de transfert mémoire.
 
 Dans le pire des scénarii, les problèmes de communications par threads peuvent venir d'une atteinte à la limite
-de bande passante de la mémoire cache vers le CPU ou de la mémoire principale vers le CPU. Ces limitations sont bien
-plus hautes que celles imposées par les communications MPI en mémoire partagée.
+de bande passante de la mémoire cache vers le CPU ou de la mémoire principale vers le CPU. Ces limitations sont bien moins contraignantes que celles imposées par les communications MPI en mémoire partagée.
 
 \begin{table}[h]
  \begin{center}
@@ -334,40 +372,207 @@ Avec deux threads, il existe trois scénarii possibles :
 \item \textcolor{orange}{Un thread lit une donnée qu'un autre thread modifie au même moment}.  Le résultat est aléatoire :
 soit le premier thread a eu la priorité sur le deuxième thread et a donc lu l'ancienne valeur soit
 le deuxième thread était prioritaire et dans ce cas, le premier thread a donc lu la nouvelle valeur;
-\item \textcolor{orange}{Les deux threads écrivent en même temps dans la même zone mémoire} : Là encore, le résultat
-est aléatoire. Au mieux, la valeur mis à jour est une des valeurs écrite par l'un des threads, au pire, la valeur
-est incohérente.
+Par exemple, considérons le code suivant :
+\begin{lstlisting}
+#include <thread>
+#include <iostream>
+
+void increment_counter(int& counter) {
+    for ( int i = 0; i < 11; ++i )  {
+        ++ counter;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+
+void display_counter(const int& counter) {
+    for (int i = 0; i < 10; ++i )  {
+        std::cout <<  counter << " " << std::flush;
+        std::this_thread::sleep_for(std::chrono::seconds(1));        
+    }
+}
+
+int main()
+{
+    int counter = 0;
+    std::thread t1(increment_counter, std::ref(counter));
+    std::thread t2(display_counter, std::cref(counter));
+
+    t2.detach();
+    t1.join();
+
+    return EXIT_SUCCESS;
+}
+\end{lstlisting}
+Dans la majeure partie des cas, nous allons afficher 
+\begin{verbatim}
+1 2 3 4 5 6 7 8 9 10
+\end{verbatim}
+ce qui est ce qu'on voulait afficher avec ce programme,
+mais parfois (dans mes essais, c'était une fois sur dix environ), le programme retourne pour affichage :
+\begin{verbatim}
+1 2 3 3 4 5 6 7 8 9
+\end{verbatim}
+
+Que s'est-il passé ? En fait, si les deux threads possèdent cent pout cent des ressources de leur unité de calcul respectif, l'affichage se déroule correctement, car le thread \texttt{t1} étant créé avant le thread
+\texttt{t2}, il incrémente le compteur juste avant l'affichage par le deuxième thread.
+
+Mais parfois, il arrive que le premier thread prenne un peu de retard (ressource système ou autre lui prenant du temps de calcul), et dans ce cas, c'est le second thread qui se met à afficher le compteur avant qu'il soit
+incrémenté (d'où la répétition du trois dans le second affichage).
+
+On voit donc que ce type de bogue peut être très dur à détecter, puisque dans l'exemple donné ci-dessus,
+le programme fonctionne la majorité du temps !
+
+\item \textcolor{orange}{Les deux threads écrivent en même temps dans la même zone mémoire} : Là encore, le résultat est aléatoire. Au mieux, la valeur mis à jour est une des valeurs écrite par l'un des threads, au pire, la valeur est incohérente et mène à un plantage de l'exécutable.
+
+Considérons ainsi le programme suivant :
+\begin{lstlisting}
+#include <thread>
+#include <iostream>
+
+void incremente_counter(int& counter) {
+    for (int i = 0; i < 5; ++i ) {
+        counter = counter + 1;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+void divide_by_two_if_even(int& counter)
+{
+    for (int i = 0; i < 5; ++i )  {
+        if (counter %2 == 0) counter /= 2;
+        else counter = counter + 1;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+
+int main()
+{
+    int counter = 0;
+    std::thread t1(incremente_counter, std::ref(counter));
+    std::thread t2(divide_by_two_if_even, std::ref(counter));
+
+    t1.join(); t2.join();
+    std::cout << "compteur final : " << counter << std::flush << std::endl;
+    return EXIT_SUCCESS;    
+}
+\end{lstlisting}
+En exécutant plusieurs fois ce programme, on constate que l'affichage varie selon les exécutions :
+\begin{verbatim}
+> ./example_data_race_write_write.exe
+compteur final : 4
+> ./example_data_race_write_write.exe
+compteur final : 8
+> ./example_data_race_write_write.exe
+compteur final : 7
+...
+\end{verbatim}
+
+On voit ici que l'accès à l'écriture sur la même variable tient de l'aléatoire puisqu'on ne tombe jamais sur le même résultat !
+\end{itemize}
+
+Ces problèmes de détection des conflits mémoires lorsqu'on programme en multithreading sont des problèmes
+très difficiles à trouver dans un code conséquent pour plusieurs raisons :
+\begin{itemize}
+  \item Le résultat est aléatoire à chaque exécution et le problème peut n'être détecté qu'à de rares exécutions. Par exemple il peut arriver à cause d'un conflit d'accès qu'un code marche neuf fois sur dix en
+  moyenne;
+  \item L'utilisation d'un déboggueur peut modifier la façon dont s'exécutent les threads, et il arrive souvent
+  que le code marche avec un déboggueur alors qu'il se plante presque systématiquement sans le déboggueur;
+  \item Les conflits peuvent occasionner des erreurs subtiles qui altèrent le résultat final sans pour autant
+  faire planter l'exécutable.
+\end{itemize}
+
+Il existe cependant des outils permettant de détecter ces conflits d'accès (et les interblocages qu'on verra plus loin), donc certains gratuits, d'autres payant. Voici une liste non exhaustive de tels outils
+qui permettent de gagner un temps précieux pour la mise au point des codes :
+\begin{itemize}
+  \item Intel inspector : Livré avec leur compilateur, payant et cher, mais efficace !
+  \item Clang intègre un outil permettant de détecter les conflits d'accès, il suffit de rajouter l'option
+  \texttt{-fsanitize=thread} pour analyser les éventuels conflits mémoires dû au multithreading. Ainsi, sous Linux, on peut tester l'outil à l'aide des exemples donnés dans le répertoire \texttt{Example} du cours.
+  Ainsi pour tester la détection sur le conflit lecture-écriture du premier exemple :
+  \begin{verbatim}
+> clang++ -fsanitize=thread -g -std=c++11 -fPIC -O1 -march=native -Wall \
+          -o example_data_race_read_write.exe example_data_race_read_write.cpp -lpthread
+
+> ./example_data_race_read_write.exe
+counter : LLVMSymbolizer: error reading file: No such file or directory
+==================
+WARNING: ThreadSanitizer: data race (pid=1732)
+  Read of size 4 at 0x7ffd5244378c by thread T2:
+    #0 display_counter(int const&) /home/juvigny/Home/Cours/Ensta/IN203_SUPPORT_COURS/Examples/example_data_race_read_write.cpp:16:38 (example_data_race_read_write.exe+0x4b3fed)
+    ...
+    #6 <null> <null> (libstdc++.so.6+0xd6d83)
+
+  Previous write of size 4 at 0x7ffd5244378c by thread T1:
+    #0 increment_counter(int&) /home/juvigny/Home/Cours/Ensta/IN203_SUPPORT_COURS/Examples/example_data_race_read_write.cpp:9:19 (example_data_race_read_write.exe+0x4b3fa4)
+    ...
+    #6 <null> <null> (libstdc++.so.6+0xd6d83)
+
+  Location is stack of main thread.
+
+  Location is global '??' at 0x7ffd52424000 ([stack]+0x00000001f78c)
+
+  Thread T2 (tid=1735, running) created by main thread at:
+    #0 pthread_create <null> (example_data_race_read_write.exe+0x424b0b)
+    ...
+
+  Thread T1 (tid=1734, finished) created by main thread at:
+    #0 pthread_create <null> (example_data_race_read_write.exe+0x424b0b)
+    ...
+
+SUMMARY: ThreadSanitizer: data race /home/juvigny/Home/Cours/Ensta/IN203_SUPPORT_COURS/Examples/example_data_race_read_write.cpp:16:38 in display_counter(int const&)
+==================
+ThreadSanitizer: reported 1 warnings
+  \end{verbatim}
+
+et pour le deuxième exemple donnant un conflit écriture-écriture pour deux threads :
+\begin{verbatim}
+> ./example_data_race_write_write.exe
+LLVMSymbolizer: error reading file: No such file or directory
+==================
+WARNING: ThreadSanitizer: data race (pid=1950)
+  Read of size 4 at 0x7ffd4c14ec18 by thread T2:
+    #0 divide_by_two_if_even(int&) ./example_data_race_write_write.cpp:16:13 ...
+    ...
+    #6 <null> <null> (libstdc++.so.6+0xd6d83)
+
+  Previous write of size 4 at 0x7ffd4c14ec18 by thread T1:
+    #0 incremente_counter(int&) example_data_race_write_write.cpp:8:17 ...
+    ...
+    #6 <null> <null> (libstdc++.so.6+0xd6d83)
+
+  Location is stack of main thread.
+
+  Location is global '??' at 0x7ffd4c130000 ([stack]+0x00000001ec18)
+
+...
+
+SUMMARY: ThreadSanitizer: data race example_data_race_write_write.cpp:16:13 in divide_by_two_if_even(int&)
+==================
+compteur final : 10
+ThreadSanitizer: reported 1 warnings
+\end{verbatim}
+
+  L'outil marche donc plutôt bien sous Linux. Il est par contre dommage qu'il ne soit pas supporté par
+  clang sous Windows...
+\item Sous Windows, il existe un utilitaire drace pour détecter les data races, mais difficile à installer (écher personnel !
 \end{itemize}
 
 Lorsque l'algorithme exige que plusieurs threads écrivent dans la même zone mémoire ( pour incrémenter un
 compteur par exemple ), il faut utiliser un mécanisme qui va obliger les threads a n'exécuter que un par un
-la partie de l'algorithme où ils écrivent sur la même adresse mémoire. On dit alors que cette partie de l'algorithme
-est une \textbf{séquentielle} de l'algorithme.
+la partie de l'algorithme où ils écrivent sur la même adresse mémoire. On dit alors que cette partie de l'algorithme est une partie \textbf{séquentielle} de l'algorithme.
 
-Si cette partie d'algorithme est complexe, on protégera cette partie de l'algorithme par des gardes qui obligeront
-les threads à ne passer que un par un.
+Si cette partie d'algorithme est complexe, on protégera cette partie de l'algorithme par des gardes qui obligeront les threads à ne passer que un par un.
 
-Si c'est une instruction élémentaire ( une addition, soustraction, \ldots ), on peut protéger uniquement cette instruction
-sans définir une zone, en la déclarant \textbf{atomique}.
+Si c'est une instruction élémentaire ( une addition, soustraction, \ldots ), on peut protéger uniquement cette instruction sans définir une zone, en la déclarant \textbf{atomique}.
 
-Si la partie séquentielle de l'algorithme se réduit à une instruction simple, on peut bien sûr utiliser des gardes pour
-la protéger comme s'il s'agissait d'instructions complexes. Cependant, la mise en place de ces gardes est bien plus lourde
-que de simplement déclarer cette instruction atomique ( on parle alors d'\textbf{atomicité} ).
+Si la partie séquentielle de l'algorithme se réduit à une instruction simple, on peut bien sûr utiliser des gardes pour la protéger comme s'il s'agissait d'instructions complexes. Cependant, la mise en place de ces gardes est bien plus lourde que de simplement déclarer cette instruction atomique ( on parle alors d'\textbf{atomicité} ).
 
 \subsection{Notion d'affinité}
 
-Tout système d'exploitation moderne supporte l'affinité par thread. Une affinité signifie qu'au lieu de laisser un thread s'exécuter
-librement sur n'importe quel unité de calcul, on demande au gestionnaire de tâche du système d'exploitation de n'exécuter un
-thread particuliers que sur une unité de calcul ou un ensemble prédéfini d'unités de calcul.
+Tout système d'exploitation moderne supporte l'affinité par thread. Une affinité signifie qu'au lieu de laisser un thread s'exécuter librement sur n'importe quel unité de calcul, on demande au gestionnaire de tâche du système d'exploitation de n'exécuter un thread particuliers que sur une unité de calcul ou un ensemble prédéfini d'unités de calcul.
 
-Par défaut, un thread peut s'exécuter sur n'importe quel CPU logique ( c'est à dire n'importe quelle unité de calcul ), si bien que
-le système d'exploitation va exécuter un thread sur une unité de calcul selon des considérations du gestionnaire de tâche. De plus,
-parfois, le système d'exploitation va faire migrer un thread d'une unité de calcul vers une autre, ce qui peut avoir un sens
-du point de vue du gestionnaire de tâche ( bien qu'il évitera au maximum de le faire, du fait qu'on perd toutes les données qui
-étaient en cache dans le c{\oe}ur d'où le thread provient ).
+Par défaut, un thread peut s'exécuter sur n'importe quel CPU logique ( c'est à dire n'importe quelle unité de calcul ), si bien que le système d'exploitation va exécuter un thread sur une unité de calcul selon des critères du gestionnaire de tâche. De plus, parfois, le système d'exploitation va migrer un thread d'une unité de calcul vers une autre, ce qui peut avoir un sens du point de vue du gestionnaire de tâche ( bien qu'il évitera au maximum de le faire, du fait qu'on perd toutes les données qui étaient en cache dans le c{\oe}ur d'où le thread provient ).
 
-Le programme suivant permet de suivre quatre threads
-dans une boucle infinie et afficher l'unité de calcul sur laquelle il s'exécute au fur et à mesure du temps :
+Le programme suivant (ici dans sa version Linux) permet de suivre quatre threads
+dans une boucle infinie et afficher l'unité de calcul (le processeur logique) sur laquelle il s'exécute au fur et à mesure du temps ( pour le code complet fonctionnant sur toutes les plateformes, voir le fichier \verb@get_cpu_for_threads.cpp@ dans le répertoire \verb@Example@) :
 \begin{lstlisting}
 int main(int argc, const char** argv) {
   constexpr unsigned num_threads = 4;
@@ -397,12 +602,10 @@ int main(int argc, const char** argv) {
 }
 \end{lstlisting}
 
-La connaissance du n{\oe}ud sur lequel le thread s'exécute est obtenue grâce à la fonction système \lstinline@sched_getcpu@
-( spécifique ici à linux ou les systèmes d'exploitation utilisant la glibc, sinon on aura une fonction similaire ). Une exécution
-de ce programme pourra par exemple donner le résultat suivant :
+La connaissance du n{\oe}ud sur lequel le thread s'exécute est obtenue grâce à la fonction système \lstinline@sched_getcpu@ ( spécifique ici à linux ou les systèmes d'exploitation utilisant la glibc, sinon pour une fonction similaire sur les autres plateformes, voir le code source \verb@get_cpu_for_threads.cpp@). Une exécution de ce programme pourra par exemple donner le résultat suivant :
 
 \begin{verbatim}
-$ ./launch-threads-report-cpu
+$ ./get_cpu_for_threads
 Thread #0: on CPU 5
 Thread #1: on CPU 5
 Thread #2: on CPU 2
@@ -428,84 +631,95 @@ Thread #3: on CPU 0
 
 \underline{Plusieurs observations} : les threads sont quelquefois exécutés sur le même CPU ( logique ), parfois
 sur différents CPUs. On peut également observer un peu de migration de threads. Enfin, le gestionnaire de tâche
-arrive à placer les threads sur différentes unités de calcul et les garde sur ces unités. Différentes contraintes
-(dont la charge du système) peuvent bien sûr conduire à des résultats différents.
+arrive à placer les threads sur différentes unités de calcul et les garde sur ces unités. Différentes contraintes (dont la charge du système) peuvent bien sûr conduire à des résultats différents.
 
-Sous Linux, exécutons de nouveau ce programme en utilisant l'utilitaire \lstinline@taskset@ qui permet de restreindre
-l'affinité d'un processus à un ou quelques CPUs. Ici, restreignons l'affinité du processus à seulement deux CPUs : le
-cinquième et le sixième :
+On peut restreindre l'exécution des threads sur des processeurs logiques spécifiques. Sous Linux, cela peut-être
+fait à l'aide de la commande  \lstinline@taskset@ comme dans l'exemple ci--dessous où on restreint les threads
+à ne s'exécuter que sur les processeurs logiques cinq et six :
+
 
 \begin{verbatim}
-$ ./launch-threads-report-cpu
-Thread #0: on CPU 5
+$ taskset -c 5,6 ./get_cpu_for_threads
+Thread #0: on CPU 6
 Thread #1: on CPU 5
-Thread #2: on CPU 2
 Thread #3: on CPU 5
-Thread #0: on CPU 2
+Thread #2: on CPU 6
+Thread #0: on CPU 6
 Thread #1: on CPU 5
-Thread #2: on CPU 3
 Thread #3: on CPU 5
-Thread #0: on CPU 3
-Thread #2: on CPU 7
+Thread #2: on CPU 5
+Thread #0: on CPU 6
 Thread #1: on CPU 5
-Thread #3: on CPU 0
-Thread #0: on CPU 3
-Thread #2: on CPU 7
+Thread #3: on CPU 6
+Thread #2: on CPU 5
+Thread #0: on CPU 6
 Thread #1: on CPU 5
-Thread #3: on CPU 0
-Thread #0: on CPU 3
-Thread #2: on CPU 7
+Thread #3: on CPU 5
+Thread #2: on CPU 5
+Thread #0: on CPU 6
+Thread #3: on CPU 6
 Thread #1: on CPU 5
-Thread #3: on CPU 0
-^C
+Thread #2: on CPU 5
+Thread #1: on CPU 5
+Thread #0: on CPU 6
+Thread #3: on CPU 6
+Thread #2: on CPU 6
+...
 \end{verbatim}
 
 Comme attendu, bien qu'on puisse encore observer des migrations de thread, les threads restent confinés aux
 cinquième et sixième CPU.
 
-Il est bien sûr possible de restreindre chaque thread à un CPU dans un programme. Cependant, il n'existe pas de solutions
-communes à tous les systèmes d'exploitation, et la solution pour définir l'affinité de chaque thread dépendra donc du
-système d'exploitation sur lequel le programme sera mis en {\oe}uvre.
+Il est bien sûr possible de restreindre chaque thread à un processeur logique particulier pour un programme donné à l'exécution. Cependant cela dépend fortement de l'API proposé par le système d'exploitation. On utilisera par exemple la commande \texttt{taskset} sous linux.
+
+Il est bien sûr possible de restreindre chaque thread à un CPU dans un programme. Cependant, il n'existe pas de solutions communes à tous les systèmes d'exploitation, et la solution pour définir l'affinité de chaque thread dépendra donc du système d'exploitation sur lequel le programme sera mis en {\oe}uvre. Néanmoins, dans le répertoire \texttt{Examples}, vous trouverez une petite librairie \texttt{thread\_extension.hpp} et
+\texttt{thread\_extension.cpp} qui permettent sous Linux, Windows ou Mac de définir les processeurs logiques
+sur lesquels chaque thread s'exécutera. Un exemple de son utilisation est donné par le programme
+\texttt{exemple\_set\_affinity.cpp}.
 
 \subsection{Applications ``memory bound'' vs ``cpu bound''}
 
-Nous avons vu dans le premier cours que la bande passante mémoire était un facteur limitant quant à la vitesse d'exécution d'un
-programme et que pour palier à la lenteur relative de la mémoire vive, on avait recours soit à de la mémoire vive interlacée, soit
-à de la mémoire cache, les deux pouvant bien sûr coexister sur une même machine.
+Nous avons vu dans le premier cours que la bande passante mémoire était un facteur limitant quant à la vitesse d'exécution d'un programme et que pour palier à la lenteur relative de la mémoire vive, on avait recours soit à de la mémoire vive interlacée, soit à de la mémoire cache, les deux pouvant bien sûr coexister sur une même machine.
 
-Selon les problèmes traités et les algorithmes employés, il n'est pas toujours possible d'exploiter efficacement la mémoire cache ou
-la mémoire vive interlacée.
+Ce problème est d'autant plus crucial lorsqu'on programme en parallèle sur mémoire partagée, car la mémoire
+est bien plus sollicitée qu'avec un programme séquentiel.
 
-\paragraph{En ce qui concerne la mémoire cache} : L'exploitation de la mémoire cache se base sur une exploitation locale en espace et en temps
-de variables qu'on pourra lire ou modifier:
+Malheureusement, selon les problèmes traités et les algorithmes employés, il n'est pas toujours possible d'exploiter efficacement la mémoire cache ou la mémoire vive interlacée.
+
+\paragraph{En ce qui concerne la mémoire cache} : L'exploitation de la mémoire cache se base sur une exploitation locale en espace et en temps de variables qu'on pourra lire ou modifier:
 \begin{itemize}
- \item Locale en espace car lors du chargement d'une variable en mémoire cache, on charge de fait une ligne de cache
- contenant cette variable mais aussi les variables suivantes, contigües en mémoire;
- \item Locale en temps  car une variable ne restera pas très longtemps en mémoire cache du fait que lors du déroulement du programme,
- d'autres variables devront être aussi chargées en mémoire cache, et il est fort probable que la variable chargée préalablement sera
- décharger de la mémoire cache.
+ \item Locale en espace car lors du chargement d'une variable en mémoire cache, on charge de fait une ligne de cache  contenant cette variable mais aussi les variables suivantes, contigües en mémoire;
+ \item Locale en temps  car une variable ne restera pas très longtemps en mémoire cache du fait que lors du déroulement du programme, d'autres variables devront être aussi chargées en mémoire cache, et il est fort probable que la variable chargée préalablement sera décharger de la mémoire cache.
 \end{itemize}
 
-Cela demande donc d'écrire des algorithmes pouvant exploiter plusieurs fois dans un bref délai les mêmes variables.
+Cela demande donc d'écrire des algorithmes pouvant exploiter plusieurs fois dans un bref délai les mêmes variables, à condition que votre algorithme le permette !
 
-\textcolor{blue}{De fait, la mise en {\oe}uvre d'un algorithme pourra exploiter la mémoire cache si la complexité en accès
-mémoire ( nombre d'accès non redondants à différentes variables ) 
-est supérieure à la complexité algorithmique, c'est à dire au nombre d'opérations effectuées.}
+\textcolor{blue}{De fait, la mise en {\oe}uvre d'un algorithme pourra exploiter la mémoire cache si la complexité en accès mémoire ( nombre d'accès \textbf{non redondants} à différentes variables ) 
+est inférieure à la complexité algorithmique, c'est à dire au nombre d'opérations effectuées.}
 
-\paragraph{En ce qui concerne la mémoire interlacée} : L'exploitation efficace d'une mémoire interlacée se base sur une lecture
-contigüe des données en mémoire. Lorsque l'algorithme utilise une lecture aléatoire ou selon un tableau d'indice des données,
-ce type de mémoire ne se montrera pas plus efficace qu'une mémoire classique.
+En effet, si le nombre d'opérations est supérieur au nombre de données exploitées par l'algorithme,
+il est certain (on applique le principe des trous de pigeon qui dit que si il y a $n$ trous
+et $p>n$ pigeons, alors il y a sûrement deux pigeons au moins dans un même trou ) qu'on va exploiter plusieurs
+fois certaines variables. Il devient donc intéressant de tenter de modifier notre algorithme pour exploiter
+localement dans le temps la même variable afin qu'elle soit après la première utilisation dans la
+mêmoire cache.
 
+\paragraph{En ce qui concerne la mémoire interlacée} : L'exploitation efficace d'une mémoire interlacée se base sur une lecture contigüe des données en mémoire. Lorsque l'algorithme utilise une lecture aléatoire ou selon un tableau d'indice des données, ce type de mémoire ne se montrera pas plus efficace qu'une mémoire classique.
+
+
+\begin{definition}
 On dira qu'une fonction est \textcolor{orange}{memory bound} si sa vitesse d'exécution est limitée par la bande passante mémoire.
+\end{definition}
 
-On dira qu'une fonction est \textcolor{orange}{cpu bound} si sa vitesse d'exécution est limitée par la vitesse de traitement
-des instructions du ou des CPUs.
+\begin{definition}
+On dira qu'une fonction est \textcolor{orange}{cpu bound} si sa vitesse d'exécution est limitée par la vitesse de traitement des instructions du ou des CPUs.
+\end{definition}
 
 Il est bien évident qu'un but majeur de l'optimisation d'un code est d'être cpu bound plutôt que memory bound !
 
-\paragraph{Quelques exemples}
+\paragraph{Quelques exemples d'applications memory bound ou cpu bound}
 
-\underline{Suite itérative} :
+\underline{La suite itérative} :
 
 \begin{lstlisting}
 double u = 56547;
@@ -515,11 +729,18 @@ for ( unsigned int iter = 0; iter < 1023; ++iter ) {
 }
 \end{lstlisting}
 
-Visiblement, cet algorithme a une complexité de 2 en accès mémoire et une complexité algorithmique supérieure
-à 1024 ! Cet algorithme sera clairement adapté à une architecture mémoire contenant de la mémoire cache.
-Le CPU pourra calculer une itération de la suite à chaque cycle d'horloge. Ce sera donc une fonction
-cpu bound. Il en est de même pour une mémoire interlacée puisqu'il est fort probable que ces deux variables seront
-stockées dans des registres du processeur !
+Visiblement, cet algorithme a une complexité de 2 en accès mémoire et une complexité algorithmique bien supérieure ! Cet algorithme sera clairement adapté à une architecture mémoire contenant de la mémoire cache
+et exploite naturellement les variables  localement en temps et espace. Le CPU pourra facilement calculer une itération de la suite à chaque cycle d'horloge. 
+
+Il en est de même pour une mémoire interlacée puisqu'il est fort probable que les deux seules variables utilisées seront stockées dans des registres du processeur !
+
+Par contre, la récurrence empêche toute parallélisation de la boucle !
+
+\underline{En conclusion} :
+\begin{itemize}
+\item [Mémoire cache] \textcolor{darkgreen}{Fonction CPU-Bound}. \textcolor{red}{Boucle non parallélisable du faît de la récurrence}.
+\item [Mémoire interlacée] \textcolor{darkgreen}{Fonction CPU-Bound}. \textcolor{red}{Boucle non parallélisable du faît de la récurrence}.
+\end{itemize}
 
 \underline{Opération vectorielle}
 
@@ -533,16 +754,25 @@ for ( int i = 0; i < N; ++i ) {
 }
 \end{lstlisting}
 
-Pour cet algorithme, il n'est pas possible d'utiliser la mémoire cache vu que nous faisons $3N$ accès mémoire
-pour $N$ opérations de comparaison.
+La complexité algorithmique de cet algorithme est de $N$ tandis que la complexité en accès mémoire
+est de $3N$. Il est donc inutile de chercher à optimiser cette fonction afin d'exploiter la mémoire cache.
 
-Dans le cas d'une machine possédant une mémoire vive non interlacée, cette fonction sera donc ``memory bound''.
+Si l'accès mémoire ne sera pas vraiment pénalisant en utilisant un seul c{\oe}ur de calcul (l'accès mémoire est encore "assez rapide" pour cela), il le sera si on cherche à paralléliser cette boucle sur une machine à mémoire partagée avec mémoire cache, d'autant plus que le nombre de threads utilisés augmente !
 
-Par contre, la lecture des données se fait de manière contigüe, et il est probable que sur une machine à mémoire interlacée,
-le CPU pourra à chacun de ses cycles d'horloge traiter une boucle de l'itération. On aura alors
-une fonction cpu bound.
+Par contre, la lecture des données se fait de manière contigüe, et donc cet algorithme est naturellement
+adaptée à une machine avec de la mémoire interlacée (comme un GPGPU par exemple). Il sera donc intéressant
+de paralléliser cette boucle pour ce type de machine (ce qui se fait "naturellement" puisqu'il n'y a aucune
+dépendance entre les opérations d'une itération à l'autre) pour gagner en performance !
+
+\underline{En conclusion} :
+\begin{itemize}
+\item [Mémoire cache] \textcolor{darkred}{Memory-bound, impossible à exploiter le cache}. \textcolor{darkred}{Inutile de paralléliser le code, l'accès mémoire empêchera tout gain substanciel en temps de calcul}.
+\item [Mémoire entrelacée] \textcolor{darkgreen}{CPU-Bound}. \textcolor{darkgreen}{Oui, il est intéressant de paralléliser si la boucle est suffisamment longue, on gagnera vraiment en performance !}
+\end{itemize}
 
 \underline{Opération matricielle}
+
+Considérons le produit matrice-matrice suivant :
 
 \begin{lstlisting}
 std::vector<double> A(N*N);
@@ -555,12 +785,38 @@ for ( int i = 0; i < N; ++i )
       C[i+j*N] += A[i+k*N]*B[k+j*N];
 \end{lstlisting}
 
-En l'état des choses, cet algorithme tel qu'il est écrit n'exploite ni la mémoire cache ni une possible mémoire interlacée.
-Cependant, on remarque que sa complexité en accès mémoire est de $3N^{2}$ tandis que sa complexité algorithmique est
-de $2N^{3}$. Donc pour $N>1$, sa complexité algorithmique est supérieure à sa complexité en accès mémoire. De plus, en reordonnant
-les boucles, tel que la boucle en i soit interne ( ce qui ne changera en aucun cas le résultat final ), on fera deux accès linéaires
-contre un seul accès avec des sauts mémoires, ce qui permet de mieux exploiter les lignes de cache ainsi qu'une éventuelle
-mémoire entrelacée :
+La complexité algorithmique du produit matrice-matrice est environ de $2n^{3}$ tandis que la complexité en accès
+mémoire est de $3N^{2}$. La complexité algorithmique étant supérieure à la complexité en accès mémoire, il est donc possible d'exploiter la mémoire cache dans cet algorithme.
+
+Par contre, tel que le code est écrit, cet algorithme n'exploite que très partiellement la mémoire cache,
+puisque seule la variable \texttt{C[i+j*N]} est reutilisée dans la boucle la plus interne. De plus, des sauts
+mémoires sont effectués pour accèder aux c{\oe}fficients de \texttt{A} (on saute \texttt{N} valeurs en mémoire à chaque itération sur la boucle en \texttt{k}), ce qui pour certaines valeurs de $N$ peut s'avèrer très pénalisant, autant pour une architecture à mémoire interlacée qu'avec une mémoire cache !
+
+En effet, il faut savoir que la mémoire cache, du moins sur les processeurs de type Intel (AMD y compris),
+la mémoire cache est dite "associative". Qu'est ce que cela signifie-t'il donc ? En fait, le terme associatif
+désigne la stratégie adoptée pour stocker les variables provenant de la mémoire principale dans une mémoire RAM. La mémoire cache étant bien plus petite que la mémoire vive (RAM), cette stratégie dite "associative"
+décide de ranger les variables issues de la RAM selon leurs adresses physiques en RAM par le calcul d'un simple modulo.
+
+Les ingénieurs ayant conçu cette stratégie ont bien sûr pensé au cas où des sauts mémoires en RAM faisaient que le hardware essaierai de ranger plusieurs variables à la même adresse dans la mémoire cache. D'une façon très limitée, ils ont donc décidé qu'on pourrait stocker une, deux, quatre ou huit variables (de soixante quatre bits), selon la mémoire cache utilisée par le processeur (on parle alors respectivement de mémoire cache 1-way, 2-ways, 4-ways, 8-ways).
+
+Ainsi, tant qu'on peut stocker une variable supplémentaire à une adresse spécifique du cache, il n'y a pas de soucis, mais lorsque cherche à stoker une nouvelle variable à cette adresse alors qu'il n'y a plus de place pour stocker cette variable, le processeur enlévera la variable la plus ancienne qu'il ira reécrire dans la mémoire vive avant de stocker la nouvelle variable. 
+
+Pour connaître grosso-modo l'adresse en cache où sera stocker une variable, on peut considérer la formule suivante (la taille étant exprimée en octet) :
+\[
+\textrm{Adresse mémoire cache} = \textrm{Addresse mémoire vive} \mod \frac{\textrm{Taille mémoire cache}}{8.\textrm{Nombre de ways}}
+\]
+
+En considérant qu'une mémoire cache L2 a une capacité en générale multiple de $1024^{2}$ octets, on voit
+qu'en prenant une dimension pour la matrice de 1024, nous allons faire pour \texttt{A} des sauts de
+$8\times 1024 = 8192$ octets, nombre divisible par $1024^{2}$, et que nous allons retomber souvent sur la
+même adresse cache dans notre boucle interne, ce qui provoquera alors beaucoup de transfert entre la mémoire cache et la mémoire vive, ralentissant drastiquement le calcul (ce qu'on pourra constater en TP).
+
+Heureusement, on peut remarquer que l'ordre des trois boucles imbriquées n'a aucune importance pour le
+calcul, et qu'on peut permuter l'ordre des boucles sans modifier le résultat !
+
+En permuttant l'ordre des boucles de sorte que la boucle en \texttt{i} soit la plus interne, on voit qu'on effectuera deux accès linéaires (pour \texttt{A} et \texttt{C}) ce qui permet d'exploiter les lignes de cache ou profiter de la mémoire interlacée, et qu'on reutilise le même \texttt{B} dans la boucle la plus interne.
+
+Ainsi, on modifie le code tel que :
 
 \begin{lstlisting}
 std::vector<double> A(N*N);
@@ -573,9 +829,11 @@ for ( int k = 0; k < N; ++k )
       C[i+j*N] += A[i+k*N]*B[k+j*N];
 \end{lstlisting}
 
+Avec ce nouveau code, on pourra constater une accélération substancielle pour certaines dimensions sur une machine avec mémoire cache et une accélération également avec une machine à mémoire interlacée.
 
-La solution pour exploiter la redondance des données est ici de faire le produit matrice--matrice à l'aide 
-d'une approche par bloc :
+Si le code s'exécute bien plus rapidement , il reste néanmoins du travail à effectuer sur une machine possédant de la mémoire cache, car la lecture linéaire des c{\oe}fficients de \texttt{A} et \texttt{C} nous empêche d'exploiter vraiment la mémoire cache.
+
+La solution pour exploiter la redondance des données pour la mémoire cache est ici de faire le produit matrice--matrice à l'aide d'une approche par bloc :
 
 \begin{lstlisting}
 std::vector<double> A(N*N);
@@ -595,60 +853,77 @@ for ( int kb = 0; kb < N; kb += szBloc )
 \end{lstlisting}
 
 Dans le code modifié par bloc, on reexploite bien dans un court intervalle une partie des données
-de $B$. On obtient dans ce cas une fonction cpu-bound.
+de \texttt{C} et de \texttt{A}. De plus, le nombre de c{\oe}fficients de $C$ et de $A$ stockée pour chaque
+boucle en \texttt{i} et \texttt{j} est suffisamment petit pour rester en mémoire cache, si bien que la boucle
+en \texttt{k} pourra au fur et à mesure des itérations reutiliser les données de \texttt{C} stockées en cache.
+De même, la boucle en \texttt{j} pourra reutiliser les données de \texttt{A} stockée en cache lors du premier passage dans la boucle en \texttt{i}.
 
-De même, en ce qui concerne la mémoire entrelacée, en plus de la modification de l'ordre des boucles en mettant la boucle en i
-comme boucle la plus interne ( voir la deuxième version du produit ), 
-il est possible d'optimiser l'accès aux données de $B$. En effet, supposons dans un premier temps
-que pour une mémoire entrelacée à quatre voix, on ait un produit avec une dimension $N=4*d+1$ ( où $d>0$ est un entier ).
-Dans ce cas, la valeur \lstinline@B[k+j*N]@ et la valeur \lstinline@B[k+(j+1)*N]@ se trouveront sur un banc mémoire différent
-( en effet, le nombre de valeurs entre  \lstinline@B[k+j*N]@ et \lstinline@B[k+(j+1)*N]@ est de 
-$N=4*d+1$ si bien que si \lstinline@B[k+j*N]@ est sur le banc $i$, \lstinline@B[k+(j+1)*N]@ sera sur le banc $i+1$ ). On
-aura dans ce cas un accès optimal aux valeurs de $B$ dans le produit matrice--matrice.
+Pour la parallélisation du produit matrice-matrice, il faut bien observer qu'on ne pourra pas paralléliser
+la boucle en \texttt{kb}. En effet, on cumule une somme sur une variable dont l'adresse mémoire ne dépend
+que de \texttt{i} et \texttt{j} (et donc de \texttt{ib} et \texttt{jb} ). Paralléliser sur la boucle 
+\texttt{kb} reviendrait donc à ce que plusieurs threads chercheraient en même temps à écrire sur la
+même adresse mémoire, ce qui nous engendrera un conflit mémoire et un résultat faux et aléatoire au final !
 
-En revanche, si $N=4*d$, alors la valeur \lstinline@B[k+j*N]@ et la valeur \lstinline@B[k+(j+1)*N]@ seront sur le même banc mémoire
-et l'accès à la mémoire entrelacée sera sous--optimal.
+La parallélisation ne pourra donc se faire que par la boucle en \texttt{jb}. L'ordre des boucles sur les blocs étant elle-même indépendante, on peut donc très bien intervertir la boucle en \texttt{jb} et \texttt{kb} pour paralléliser la boucle la plus externe.
 
-L'astuce dans ce cas pour s'assurer un accès optimal à la mémoire entrelacée est de rajouter zéro à trois éléments ( selon la valeur de $N$ )
-tout les $N$ éléments de sorte que d'accéder à la $(j+1)^{\mbox{ème}}$ colonne à partir de la  $j^{\mbox{ème}}$ colonne permet de changer de
-banc mémoire.
-
-\section{Posix threads (C++ 2011)}
-
-\subsection{Exécution et terminaison d'un thread en C++ 2011}
-
-Créer et terminer un thread en C++ 2011 est bien plus simple qu'avec la bibliothèque
-pthread proposée par UNIX.
-
-Voyons comment créer un simple programme HelloWorld multi--threadé :
-
+Ainsi, on cherchera donc à paralléliser plutôt le code suivant :
 \begin{lstlisting}
-#include <iostream>
-#include <thread>
-
-// Cette fonction sera appelée par un thread
-void call_from_thread() {
-  std::cout << "Hello, World" << std::endl;
-}
-
-int main() {
-  // Exécution d'un thread
-  std::thread t1(call_from_thread);
-
-  //Join the thread with the main thread
-  t1.join();
-
-  return 0;
-}
+std::vector<double> A(N*N);
+std::vector<double> B(N*N);
+std::vector<double> C(N*N);
+...
+const int szBloc = 127;
+// On saucissone les boucles en i,j et k en plusieurs morceaux 
+// de taille szBloc :
+for ( int jb = 0; jb < N; jb += szBloc )
+  for ( int kb = 0; kb < N; kb += szBloc )
+    for ( int ib = 0; ib < N; ib += szBloc )
+      for ( int k = kb; k < kb+szBloc; ++k )
+        for ( int j = jb; j < jb+szBloc; ++j )
+          for ( int i = ib; i < ib+szBloc; ++i )
+            C[i+j*N] += A[i+k*N]*B[k+j*N];
 \end{lstlisting}
 
-Dans le monde réel, la fonction \lstinline@call_from_thread@ fera un travail indépendant de la fonction principale.
-Dans le code donné ci--dessus, la fontion principale créée un thread et attend que le thread ait finit en appelant
-\lstinline@t1.join()@. Si vous oubliez d'attendre qu'un thread ait fini son travail, il est possible que la fonction
-principale termine avant le thread et le programme sortira en tuant le thread, qu'il est fini son travail ou non.
+On verra en TD comment paralléliser "facilement" ce code à l'aide des directives OPENMP (voir plus loin dans ce cours pour les directives OPENMP).
 
-Remarquons qu'il est en C++ 2011 possible de passer comme fonction à exécuter par le thread une lamda fonction. Ainsi, l'exemple
-donné plus haut aurait pu s'écrire :
+En ce qui concerne la mémoire entrelacée, en plus de la modification de l'ordre des boucles en mettant la boucle en i comme boucle la plus interne ( voir la deuxième version du produit ), 
+il est possible d'optimiser l'accès aux données de $B$. En effet, supposons dans un premier temps
+que pour une mémoire entrelacée à quatre voix, on ait un produit avec une dimension $N=4*d+1$ ( où $d>0$ est un entier ).
+Dans ce cas, la valeur \lstinline@B[k+j*N]@ et la valeur \lstinline@B[k+(j+1)*N]@ se trouveront sur un banc mémoire différent ( en effet, le nombre de valeurs entre  \lstinline@B[k+j*N]@ et \lstinline@B[k+(j+1)*N]@ est de $N=4*d+1$ si bien que si \lstinline@B[k+j*N]@ est sur le banc $i$, \lstinline@B[k+(j+1)*N]@ sera sur le banc $i+1$ ). On aura dans ce cas un accès optimal aux valeurs de $B$ dans le produit matrice--matrice.
+
+En revanche, si $N=4*d$, alors la valeur \lstinline@B[k+j*N]@ et la valeur \lstinline@B[k+(j+1)*N]@ seront sur le même banc mémoire et l'accès à la mémoire entrelacée sera sous--optimal.
+
+L'astuce dans ce cas pour s'assurer un accès optimal à la mémoire entrelacée est de rajouter zéro à trois éléments ( selon la valeur de $N$ ) tout les $N$ éléments de sorte que d'accéder à la $(j+1)^{\mbox{ème}}$ colonne à partir de la  $j^{\mbox{ème}}$ colonne permet de changer de banc mémoire.
+
+Le code devriendra donc :
+\begin{lstlisting}
+// nb_ways est le nombre de voies de la mémoire interlacée
+const int NbRows = N+ (nb_ways - 1 - N%nb_ways);
+std::vector<double> A(N*NbRows);
+std::vector<double> B(N*NbRows);
+std::vector<double> C(N*NbRows);
+...
+// Remarque : les matrices sont toujours de dimension N,
+//            même si on a rajouté des lignes aux tableaux !
+for ( int k = 0; k < N; ++k )
+  for ( int j = 0; j < N; ++j )
+    for ( int i = 0; i < N; ++i )
+      C[i+j*NbRows] += A[i+k*NbRows]*B[k+j*NbRows];
+\end{lstlisting}
+
+
+
+\section{Pour aller un peu plus loin avec les Posix threads (C++ 2011)}
+
+\subsection{Exécution d'un thread en C++ 2011 (compléments)}
+
+C++ 2011 a apporté beaucoup de nouveautés au langage C++. En particuliers, C++ 2011 a introduit
+en C++ la notion de lambda fonctions (déjà présentes dans d'autres langages comme Python).
+
+Il est parfaitement possible d'exécuter une lambda fonction par un thread. Ainsi,
+pour reprendre le programme \texttt{Helloworld\_multitreade.cpp}, on peut le modifier
+pour appeler une lambda fonction au lieu d'une fonction, ce qui simplifie et clarifie
+(en parti) le code :
 
 \begin{lstlisting}
 #include <iostream>
@@ -656,7 +931,8 @@ donné plus haut aurait pu s'écrire :
 
 int main() {
   // Exécution d'un thread
-  std::thread t1([] () { std::cout << "Hello, World" << std::endl; } );
+  std::thread t1([](){std::cout << "Hello world" << std::endl; });
+
   //Join the thread with the main thread
   t1.join();
 
@@ -665,8 +941,8 @@ int main() {
 \end{lstlisting}
 
 En général, on souhaite lancer plus qu'un thread et faire plusieurs tâches en parallèle. Pour faire cela,
-il faut créer un tableau de thread. Dans l'exemple suivant, la fonction principale créée un groupe de dix threads 
-qui feront plusieur tâches puis elle attendra que les dix threads aient fini :
+il faut créer un tableau de thread pour pouvoir les gérer. 
+Dans l'exemple suivant, la fonction principale créée un groupe de dix threads  qui feront plusieur tâches puis elle attendra que les dix threads aient fini :
 
 \begin{lstlisting}
 static const int num_threads = 10;
@@ -677,7 +953,8 @@ int main() {
   // Exécution d'un groupe de threads
   //Launch a group of threads
   for (int i = 0; i < num_threads; ++i) {
-    t[i] = std::thread(call_from_thread);
+    t[i] = std::thread([](int i){ std::cout << "Hello from thread " 
+                                            << i << std::endl; }, i);
   }
 
   std::cout << "Launched from the main\n";
@@ -695,121 +972,70 @@ Souvenez vous que le programme principal est lui-même un thread, nommé le thre
 ci--dessus exécute onze threads en tout. Cela nous permet de faire d'autres tâches dans la fonction principale
 après que l'on ait lancé les dix threads et avant de se synchroniser avec eux. 
 
-Comment faire pour passer des paramètres dans un thread en C++ 2011 ? En fait, C++ 11 nous laisse rajouter
-autant de paramètres que l'on veut dans l'appel du thread. On peut par exemple donner un entier à chaque thread dans le code
-ci--dessus :
 
-\begin{lstlisting}
-#include <iostream>
-#include <thread>
-
-static const int num_threads = 10;
-
-//Cette fonction sera appelée d'un thread
-void call_from_thread(int tid) {
-  std::cout << "Launched by thread " << tid << std::endl;
-}
-
-int main() {
-  std::thread t[num_threads];
-
-  // Exécuter un groupe de threads :
-  for (int i = 0; i < num_threads; ++i) {
-    t[i] = std::thread(call_from_thread, i);
-  }
-
-  std::cout << "Launched from the main\n";
-
-  // Joindre les threads avec le thread principal :
-  for (int i = 0; i < num_threads; ++i) {
-    t[i].join();
-  }
-
-  return 0;
-}
-\end{lstlisting}
-
-
-\subsection{Lancer un thread par CPU}
+\subsection{Lancer un thread par processeur logique}
 
 Le C++ 2011 nous fournit une fonction utilitaire permettant de savoir combien d'unités de calcul
-sont possédés par la machine sur laquelle s'exécute le programme, afin que nous puissions ensuite
+logiques sont possédés par la machine sur laquelle s'exécute le programme, afin que nous puissions ensuite
 calibrer notre stratégie de parallélisation. La fonction est appelée \lstinline@hardware_concurrency@
 et l'exemple ci--dessous montre un exemple qui l'utilise pour exécuter un nombre approprié de threads :
 
 \begin{lstlisting}
-int main(int argc, const char** argv) {
-  unsigned num_cpus = std::thread::hardware_concurrency();
-  std::cout << "Créer " << num_cpus << " threads\n";
+int main()
+{
+    // num_cpus contiendra le nombre de processeurs logiques !
+    auto num_cpus = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads;
+    threads.reserve(num_cpus);
 
-  // Un mutex permet de s'assurer un accès ordonnées au std::cout pour
-  // de multiples threads.
-  std::mutex iomutex;
-  std::vector<std::thread> threads(num_cpus);
-  for (unsigned i = 0; i < num_cpus; ++i) {
-    // On lance un thread exécutant une lambda fonction :
-    threads[i] = std::thread([&iomutex, i] {
-      {
-        // std::lock_guard permet de bloquer un mutex pendant la durée d'un bloc
-        // d'instruction. Ici cela permet de bloquer le mutex uniquement durant
-        // l'affichage à l'iade de std::cout
-        std::lock_guard<std::mutex> iolock(iomutex);
-        std::cout << "Thread #" << i << " is running\n";
-      }
+    for ( decltype(num_cpus) i = 0; i < num_cpus; ++i )
+        threads.emplace_back([](int id){std::cout << "Hello from " 
+                                                  << id << " !" << std::endl; },i);
 
-      // On simule un travail important en mettant le thread un peu en pause
-      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    std::cout << "Hello from main !" << std::endl;
 
-    });
-  }
+    for ( auto& t : threads )
+        t.join();
 
-  for (auto& t : threads) {
-    t.join();
-  }
-  return 0;
-} 
+    return EXIT_SUCCESS;
+}
 \end{lstlisting}
 
 \subsection{Section séquentielle}
 
-On a vu dans les généralités qu'il est possible d'avoir une partie d'un code qui ne peut être exécuté en parallèle et où on doit
-s'assurer que les threads ne peuvent passer que un par un.
+On a vu dans les généralités qu'il est possible d'avoir une partie d'un code qui ne peut être exécuté en parallèle et où on doit s'assurer que les threads ne peuvent passer que un par un.
 
-On utilise dans ce cas une instance de la classe \lstinline@mutex@ qui est une primitive de synchronisation qui peut être utilisée
-pour protéger des données partagées simultanément par plusieurs threads.
+\subsubsection{Les mutex (Mutual Exclusion)}
+
+On utilise dans ce cas une instance de la classe \lstinline@mutex@ qui est une primitive de synchronisation qui peut être utilisée pour protéger des données partagées simultanément par plusieurs threads.
 
 Le mutex propose une sémantique une sémantique de propriété exclusif et non-récursif :
 
 \begin{itemize}
 \item Un thread appelant possède un mutex quand il réussit l'appel à 
 \lstinline@lock@ ou \lstinline@try_lock@ et cela jusqu'à ce qu'il appelle unlock.
-\item Quand un thread possède un mutex, tous les autres threads bloqueront (pour les appels à \lstinline@lock@) ou 
-      recevront une valeur de retour false (pour \lstinline@try_lock@) s'ils tentent de revendiquer la propriété de la mutex.
-\item Un thread appelant ne doit pas posséder un mutex avant d'appeler \lstinline@lock@ ou \lstinline@try_lock@. 
+\item Quand un thread possède un mutex, tous les autres threads bloqueront (pour les appels à \lstinline@lock@) ou  recevront une valeur de retour false (pour \lstinline@try_lock@) s'ils tentent de revendiquer la propriété de la mutex.
+\item Un thread appelant ne doit pas posséder un mutex avant d'appeler \lstinline@lock@ ou \lstinline@try_lock@.
 \end{itemize}
 
-Le comportement d'un programme n'est pas défini si un mutex est détruit alors qu'il est toujours détenu par un autre thread. 
-La classe mutex n'est ni copiable ni déplaçable.
+Le comportement d'un programme n'est pas défini si un mutex est détruit alors qu'il est toujours détenu par un autre thread. La classe mutex n'est ni copiable ni déplaçable.
 
-Cet exemple montre comment un mutex peut être utilisé pour protéger une map :
+Cet exemple montre comment un mutex peut être utilisé pour protéger un dictionnaire lorsqu'on lui rajoute 
+des éléments :
 
 \begin{lstlisting}
-#include <iostream>
-#include <chrono>
-#include <thread>
-#include <mutex>
-#include <map>
-#include <string>
- 
 std::map<std::string, std::string> g_pages;
 std::mutex g_pages_mutex;
- 
+
+// Fonction censer sauver une page html accessible par une adresse internet. 
 void save_page(const std::string &url)
 {
-    // simulate a long page fetch
+    // On simule un temps long pour l'obtention d'une page internet
     std::this_thread::sleep_for(std::chrono::seconds(2));
     std::string result = "fake content";
  
+    // On a rajouté un mutex pour empêcher les threads de rajouter en même
+    // temps un élément au dictionnaire.
     g_pages_mutex.lock();
     g_pages[url] = result;
     g_pages_mutex.unlock();
@@ -821,12 +1047,12 @@ int main()
     std::thread t2(save_page, "http://bar");
     t1.join();
     t2.join();
- 
-    g_pages_mutex.lock();
+
+    // Pas besoin de protéger ici, puisque les threads ont terminé
+    // leur travail. 
     for (const auto &pair : g_pages) {
         std::cout << pair.first << " => " << pair.second << '\n';
     }
-    g_pages_mutex.unlock();
 }
 \end{lstlisting}
 
@@ -837,12 +1063,196 @@ http://bar => fake content
 http://foo => fake content
 \end{verbatim}
 
-Si la donnée partagée par les threads est une donnée de type primitif ( entier, réel, char, \ldots ) et si l'opération
-effectuée dessus est basique ( incrément, addition, soustraction, etc. ), on peut, plutôt que d'utiliser des mutex, déclarer
-cette variable atomique. On sera ainsi garantit qu'il n'y aura pas de conflit lors de l'exécution en parallèle des threads.
+On peut vérifier avec clang (mais pas sous Windows directement) qu'il n'y a pas de conflit avec ce code,
+mais qu'en enlevant les lignes \texttt{g\_pages\_mutex.lock();} et \texttt{g\_pages\_mutex.unlock();},
+clang détecte bien des conflits !
 
-Imaginons par exemple que nous avons un compteur que l'on doit incrémenter de un lorsque chaque thread finit une ligne de l'ensemble de mandelbrot
-et doit calculer la prochaine ligne de l'image encore non calculée :
+Si les mutex permettent de résoudre les problèmes de conflits mémoires éventuels, ils coûtent chers
+en ressource CPU et peuvent ammener à des inter-blocages. Considérons le programme suivant :
+
+\begin{lstlisting}
+#include <thread>
+#include <mutex>
+#include <iostream>
+
+std::mutex lock_value1;
+std::mutex lock_value2;
+
+int value1, value2;
+
+void increment_value1_and_decrement_value2() {
+    std::cout << "Start increment value 1 decrement value 2" 
+              << std::flush << std::endl;
+    for ( int i = 0; i < 100; ++i ) {
+        lock_value2.lock();
+        lock_value1.lock();
+        value1 ++; value2 --;
+        lock_value1.unlock();
+        lock_value2.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    std::cout << "End increment value 1 decrement value 2" 
+              << std::flush << std::endl;
+}
+
+void increment_value2() {
+    std::cout << "Start increment value 2" 
+              << std::flush << std::endl;
+    for ( int i = 0; i < 50; ++i ) {
+        lock_value2.lock();
+        value2 ++;
+        lock_value2.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    std::cout << "End increment value 2" << std::flush << std::endl;
+}
+
+void increment_both_values() {
+    std::cout << "Start increment values 1 and 2" 
+              << std::flush << std::endl;
+    for ( int i = 0; i < 100; ++i ) {
+        lock_value1.lock();
+        lock_value2.lock();
+        value1 ++; value2 ++;
+        lock_value2.unlock();
+        lock_value1.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    std::cout << "End increment values 1 and 2" 
+              << std::flush << std::endl;
+}
+
+int main() {
+    std::thread t1(increment_value1_and_decrement_value2);
+    std::thread t2(increment_value2);
+    std::thread t3(increment_both_values);
+
+    t1.detach(); t2.detach(); t3.detach();
+    std::cout << "Processus principal : j'ai detache mes trois processus" << std::flush << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::cout << "J'ai attendu dix secondes. Bye bye !" << std::flush << std::endl;
+    return EXIT_SUCCESS;
+}
+\end{lstlisting}
+
+Si vous le compilez et l'exécuter plusieurs fois dans le répertoire \texttt{Examples}, vous verrez que
+parfois les threads se terminent (en affichant "End increment..."), parfois ne se terminent pas et
+sont tués lorsque le programme principal se termine au bout de dix secondes. Dans le programme donné
+dans \texttt{Examples}, on affiche en plus la valeur incréméntée ou décrémentée de \texttt{value1}
+et \texttt{value2}. On constate que lorsque les threads semblent se geler à des itérations différentes
+à chaque exécution.
+L'explication est que nous sommes selon l'ordre d'exécution de chacun des threads dans une situation d'interblocage ou non. 
+
+En effet, imaginons le scénario suivant :
+\begin{itemize}
+  \item Le processus \texttt{t1} verrouille \texttt{lock\_value1};
+  \item Pendant ce temps, le processus \texttt{t2} verrouille \texttt{lock\_value2};
+  \item Quand le processus \texttt{t2} déverrouille \texttt{lock\_value2}, c'est \texttt{t3} qui
+        vérrouille \texttt{lock\_value2}
+  \item \texttt{t1} attend que \texttt{t3} déverrouille \texttt{lock\_value2};
+  \item \texttt{t3} attend que \texttt{t1} déverrouille \texttt{lock\_value1};
+  \item \texttt{t2} attend que \texttt{t3} déverrouille \texttt{lock\_value2};
+\end{itemize}
+
+Les threads \texttt{t1} et \texttt{t3} présentent bien une situation d'interblocage qui au passage
+va aussi bloquer \texttt{t2} ! 
+
+Par contre, dans ce second scénario :
+\begin{itemize}
+  \item Le processus \texttt{t1} verrouille \texttt{lock\_value1};
+  \item Pendant ce temps, le processus \texttt{t2} verrouille \texttt{lock\_value2};
+  \item Quand le processus \texttt{t2} déverrouille \texttt{lock\_value2}, \texttt{t1}
+        verrouille \texttt{lock\_value2}
+  \item \texttt{t1} déverrouille \texttt{lock\_value2}
+  \item \texttt{t3} verrouille \texttt{lock\_value2}
+  \item \texttt{t1} déverrouille \texttt{lock\_value1}
+  \item \texttt{t3} verrouille \texttt{lock\_value1}
+  \item \texttt{t3} déverrouille \texttt{lock\_value1}
+  \item \texttt{t3} déverrouille \texttt{lock\_value2}
+\end{itemize}
+
+Il n'y a pas d'interblocage et chacun des processus peut passer à l'itération suivante !
+
+En multithreading, l'interblocage n'est pas systématique (comme cela peut arriver en MPI) et présente toujours
+une difficulté pour déceler ces interblocages qui peuvent arriver rarement dans l'exécution d'un code.
+
+En C++ 2011, il existe néanmoins des solutions pour éviter de tels interblocages (ici dû au fait qu'on ne bloque pas dans le même ordre les mutex, mais ce n'est pas toujours possible de les bloquer dans l'ordre)
+
+Par exemple, pour notre cas, ci-dessus, il suffit d'appeler une fonction du C++ 11 qui adopte une autre stratégie pour le verrouillage des mutex et qui permet d'éviter l'interblocage :
+
+\begin{lstlisting}
+#include <thread>
+#include <mutex>
+#include <iostream>
+
+std::mutex lock_value1;
+std::mutex lock_value2;
+
+int value1, value2;
+
+void increment_value1_and_decrement_value2() {
+    std::cout << "Start increment value 1 decrement value 2" 
+              << std::flush << std::endl;
+    for ( int i = 0; i < 100; ++i ) {
+        std::lock(lock_value2, lock_value1);
+        value1 ++; value2 --;
+        lock_value1.unlock();
+        lock_value2.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    std::cout << "End increment value 1 decrement value 2" 
+              << std::flush << std::endl;
+}
+
+void increment_value2() {
+    std::cout << "Start increment value 2" 
+              << std::flush << std::endl;
+    for ( int i = 0; i < 50; ++i ) {
+        lock_value2.lock();
+        value2 ++;
+        lock_value2.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    std::cout << "End increment value 2" 
+              << std::flush << std::endl;
+}
+
+void increment_both_values() {
+    std::cout << "Start increment values 1 and 2" << std::flush << std::endl;
+    for ( int i = 0; i < 100; ++i ) {
+        std::lock(lock_value1, lock_value2);
+        value1 ++; value2 ++;
+        lock_value2.unlock();
+        lock_value1.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    std::cout << "End increment values 1 and 2" << std::flush << std::endl;
+}
+
+int main() {
+    std::thread t1(increment_value1_and_decrement_value2);
+    std::thread t2(increment_value2);
+    std::thread t3(increment_both_values);
+
+    t1.detach(); t2.detach(); t3.detach();
+    std::cout << "Processus principal : j'ai detache mes trois processus" << std::flush << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::cout << "J'ai attendu dix secondes. Bye bye !" << std::flush << std::endl;
+    return EXIT_SUCCESS;
+}
+\end{lstlisting}
+
+Si vous exécutez le code \texttt{exemple\_interblocage\_correction.exe}, vous constaterez que les
+interblocages aléatoires ont disparus. 
+
+La gestion propre et rigoureuse des mutex est un sujet en choix. Il faut savoir que C++ 2011 ( et 2017
+qui en rajout ed'autres) propose une vaste panoplie de stratégie pour les mutex (en particuliers pour les fonctions récursives), et que seul ce cours ne suffirait pas à les répertorier.
+
+\subsubsection{Les atomics}
+
+Si la donnée partagée par les threads est une donnée de type primitif ( entier, réel, char, \ldots ) et si l'opération effectuée est basique ( incrément, addition, soustraction, etc. ), on peut, plutôt que d'utiliser des mutex, déclarer cette variable atomique. On sera ainsi garanti qu'il n'y aura pas de conflit lors de l'exécution en parallèle des threads.
+
+Imaginons par exemple que nous avons un compteur que l'on doit incrémenter de un lorsque chaque thread finit une ligne de l'ensemble de mandelbrot et doit calculer la prochaine ligne de l'image encore non calculée :
 
 \begin{lstlisting}
 # include <atomic>
@@ -874,36 +1284,18 @@ void compMandelbrot( int W, int H )
 }
 \end{lstlisting}
 
-Comme expliqué précédemment, l'atomicité est un procédé bien plus léger qu'un mutex et doit être utilisé si possible.
-De plus, si il possible d'avoir des deadlocks avec les mutex comme dans le programme suivant :
-\begin{lstlisting}
-if ( pid == 0) {
-  lock(S);
-  lock(Q);
-  ...
-  unlock(Q);
-  unlock(S);
-} else if ( pid == 1 ) {
-  lock(Q);
-  lock(S);
-  ...
-  unlock(S);
-  unlock(Q);
-}
-\end{lstlisting}
+Comme expliqué précédemment, l'atomicité est un procédé bien plus léger qu'un mutex et doit être utilisé si possible. De plus, il est impossible d'avoir un deadlock à l'aide d'opérations atomiques.
 
-il est impossible d'avoir un deadlock à l'aide d'opérations atomiques.
+En autre exemple peut-être trouvé dans le répertoire \texttt{Examples}. Il affiche à la fin toujours la même
+valeurs et clang montre bien qu'il n'y a pas de conflit mémoire pouvant donner des valeurs aléatoires.
 
 \section{OpenMP}
 
 \subsection{Principe d'OpenMP}
 
-OpenMP est un outil intégré dans la plupart des compilateurs actuels ( gnu c++, MS VC++, Intel, etc. ). Son principe est de pouvoir
-exécuter des threads en définissant des régions parallèles à l'aide de directives de compilation ( \lstinline@#pragma@ en C et C++ ).
+OpenMP est un outil intégré dans la plupart des compilateurs actuels ( gnu c++, MS VC++, Intel, etc. ) en C, C++ et en Fortran. Son principe est de pouvoir exécuter des threads en définissant des régions parallèles à l'aide de directives de compilation ( \lstinline@#pragma@ en C et C++ ).
 
-Ces régions parallèles permettant aux threads soit d'exécuter la même section de code sur des données différentes soit des sections de code
-différentes. On peut également y définir les variables qui seront partagées entre les threads et celles qui seront privées, c'est à dire
-locales à chaque thread.
+Ces régions parallèles permettant aux threads soit d'exécuter la même section de code sur des données différentes soit des sections de code différentes. On peut également y définir les variables qui seront partagées entre les threads et celles qui seront privées, c'est à dire locales à chaque thread.
 
 Enfin, on peut alterner entre des régions du code  parallèles et des régions séquentielles.
 
@@ -928,7 +1320,8 @@ les directives de compilation. Si cette option n'est pas donnée, le compilateur
 Lorsque l'option de compilation est mis, le compilateur intégrera automatiquement la bibliothèque OpenMP contenant les utilitaires pour
 OpenMP. 
 
-On peut contrôler le nombre de threads générés par l'application à l'aide de la variable \verb@OMP_NUM_THREADS@.
+On peut contrôler dynamiquement le nombre de threads générés par l'application à l'aide de 
+la variable d'environnement \verb@OMP_NUM_THREADS@ mais aussi à l'aide de fonctions fournies par la bibliothèque d'OpenMP.
 
 Les prototypes des fonctions associées avec OpenMP sont définis dans le fichier d'entête \lstinline@omp.h@.
 
@@ -937,99 +1330,181 @@ Les prototypes des fonctions associées avec OpenMP sont définis dans le fichie
 Par défaut, les variables définies à l'extérieur de la section parallèle
 sont partagées et tous threads exécutent le même code.
 
-Une barrière implicite de synchronisation se fait automatiquement à la fin de la section parallèle.
+Une barrière implicite de synchronisation se fait automatiquement par défaut à la fin de la section parallèle.
 
 Il est interdit d'exécuter des instructions de saut dans une région parallèle ( goto, break, etc. )
 
 \underline{\textcolor{orange}{Exemple de région parallèle} :}
 \begin{lstlisting}
-# include <iostream>
-# include <cstdlib>
-# include <omp.h>
+#include <iostream>
+#include <iomanip>
+#include <omp.h>
 
 int main()
 {
-  float a;
-  int p;
-  
-  a = 92290; p = 0;
-# pragma omp parallel
-  {// Début de la région parallèle
+    int p;
+    // Teste si on est dans une région parallèle
     p = omp_in_parallel();
-    std::cout << "a = " << a << " et p = " << p << std::endl;
-  }// Fin de la région parallèle
-  return EXIT_SUCCESS;
+    std::cout << "Dans une region parallele ? " << std::boolalpha << (p!=0) << std::flush << std::endl;
+#pragma omp parallel
+{
+    // Teste si on est dans une région parallèle
+    p = omp_in_parallel();
+    std::cout << "Dans une region parallele ? " << std::boolalpha << (p!=0) << std::flush << std::endl;
 }
-\end{lstlisting}
+    return EXIT_SUCCESS;
+}\end{lstlisting}
 
 La sortie de ce programme donnera :
 \begin{verbatim}
-a = 92290, p = 1
-a = 92290, p = 1
+$ export OMP_NUM_THREADS=2; ./exemple_omp_parallel_region.exe
+Dans une region parallele ? false
+Dans une region parallele ? true
+Dans une region parallele ? true
+\end{verbatim}
+ ou encore
+
+\begin{verbatim}
+$ export OMP_NUM_THREADS=4; ./exemple_omp_parallel_region.exe
+Dans une region parallele ? false
+Dans une region parallele ? true
+Dans une region parallele ? true
+Dans une region parallele ? true
+Dans une region parallele ? true
 \end{verbatim}
 
-Remarquons que le début et la fin de la région parallèle sont définis par la déclaration d'un début et fin de blocs
-d'instruction.
+(En fait, avec quatre processus, les messages ont tendance à s'entremêler, et n'est pas aussi clair que cela !)
 
-On peut modifier le status d'une variable entre partagée ou privée à l'aide d'une \textsl{clause}.
+Remarquons que le début et la fin de la région parallèle sont définis par la déclaration d'un début et fin de blocs d'instruction.
 
-Les variables privées sont créées au commencement du bloc parallèle pour chaque thread et ne sont pas définies à l'entrée
-de ce bloc.
+Enfin, toute fonction appelée dans une région parallèle sera elle-même considérée comme étant dans une région parallèle.
 
-\underline{\textcolor{orange}{Exemple de région parallèle avec clause private} :}
+\subsection{Variables privées, variables partagées}
+
+Commençons par donner la définition d'une variable privée et d'une variable partagée :
+
+\begin{definition}
+Une variable privée est une variable gérée localement par un seul thread.
+\end{definition}
+
+Et a contrario
+
+\begin{definition}
+Une variable partagée est une variable vue et gérée par l'ensemble des threads.
+\end{definition}
+
+Par défaut, une variable déclarée \textbf{hors d'une région parallèle} est \textcolor{blue}{partagée}. Une variable déclarée  \textbf{dans une région parallèle} est \textcolor{blue}{privée}.
+
+Par exemple :
 \begin{lstlisting}
-# include <iostream>
-# include <cstdlib>
-# include <omp.h>
+#include <iostream>
+#include <omp.h>
 
 int main()
 {
-  float a = 92000;
-  
-# pragma omp parallel default(none) private(a)
-  {// Début de la région parallèle
-    a = a + 290;
-    std::cout << "a = " << a << " et p = " << p << std::endl;
-  }// Fin de la section parallèle
-  return EXIT_SUCCESS;
+    int a = 314;
+#   pragma omp parallel
+    {
+        // Lis un numéro unique pour le thread
+        int id = omp_get_thread_num();
+        std::cout << "Le thread n." << id << " peut lire la variable a = " << a 
+                  << std::flush << std::endl;
+        a = 413;
+    }
+    std::cout << "A la sortie de la région parallele, a vaut " << a << std::flush << std::endl;
+    return EXIT_SUCCESS;
 }
 \end{lstlisting}
 
-La sortie de ce programme donnera :
+Une sortie possible de ce code :
 \begin{verbatim}
-a = 290
-a = 290
+Le thread n.0 peut lire la variable a = 314
+Le thread n.1 peut lire la variable a = 413
+A la sortie de la région parallele, a vaut 413
 \end{verbatim}
 
-Si on désire qu'une variable soit privée mais prenne la valeur qu'elle avait dans la région séquentielle, il faut utiliser la clause
-\lstinline@firstprivate@.
+Dans ce code, a est une variable qui sera donc partagée par tous les threads dans la zone parallèle
+tandis que \texttt{id} sera une variable privée, c'est à dire que chaque thread contiendra sa propre
+variable \texttt{id} (qui pourra donc être différente selon les threads).
 
-\underline{\textcolor{orange}{Exemple de région parallèle avec clause firstprivate} :}
+Remarquons que ce code contient un conflit mémoire (data race) à l'image de ceux vu pour les pthreads,
+puisque \texttt{a} est modifié par les threads se trouvant dans la région parallèle (ce qui est d'ailleurs
+détecté par clang si on lui rajoute l'option \texttt{-fsanitize=thread}).
+
+On peut modifier le status d'une variable déclarée hors d'une région parallèle pour être soit partagée soit  privée à l'aide d'une clause \textsl{private} ou \textsl{shared}.
+
+\underline{Remarque} : Attention, si une variable déclarée hors de la zone parallèle est déclarée comme
+privée lorsqu'on rentre dans la zone, on créera une nouvelle variable pour chaque thread qui seront ensuite
+perdues à la sortie de la zone parallèle
+
+Ainsi, le code suivant :
 \begin{lstlisting}
-# include <iostream>
-# include <cstdlib>
-# include <omp.h>
+#include <iostream>
+#include <omp.h>
 
 int main()
 {
-  float a = 92000;
-  
-# pragma omp parallel default(none) firstprivate(a)
-  {// Début de la région parallèle
-    a = a + 290;
-    std::cout << "a = " << a << " et p = " << p << std::endl;
-  }// Fin de la région parallèle
-  return EXIT_SUCCESS;
+    int a = 314;
+#   pragma omp parallel private(a)
+    {
+        // Lis un numéro unique pour le thread
+        int id = omp_get_thread_num();
+        std::cout << "Le thread n." << id << " peut lire la variable a = " << a 
+                  << std::flush << std::endl;
+        a = 413;
+    }
+    std::cout << "A la sortie de la région parallele, a vaut " << a << std::flush << std::endl;
+    return EXIT_SUCCESS;
 }
 \end{lstlisting}
 
-La sortie de ce programme donnera :
+très semblable au premier code déclare \texttt{a} comme privé. 
+
+On a pour sortie :
 \begin{verbatim}
-a = 92290
-a = 92290
+Le thread n.0 peut lire la variable a = 0
+Le thread n.1 peut lire la variable a = 0
+A la sortie de la région parallele, a vaut 314
 \end{verbatim}
 
-\subsection{Fonction appelée dans une région parallèle}
+Déclarer \texttt{a} en privée a donc pour conséquence que :
+\begin{itemize}
+  \item Le compilateur vous préviens que la variable \texttt{a} dans la zone parallèle n'est pas initialisée
+  lors de l'affichage;
+  \item La valeur de a qu'affiche chaque thread sera différente de celle donnée dans le processus principal
+  \item La valeur affichée en sortie de la zone parallèle est celle donnée avant l'entrée dans la zone parallèle, ne prenant pas en compte la modification du \texttt{a} fait dans la région parallèle ( ce qui est normale, puisque le \texttt{a} dans la région parallèle n'est pas la même variable que celle dans le proce
+  ssus.)
+\end{itemize}
+
+
+Si on désire qu'une variable soit privée mais prenne la valeur qu'elle avait dans la région séquentielle, il faut remplacer la clause \lstinline@private@ par la clause \lstinline@firstprivate@.
+
+\begin{lstlisting}
+#include <iostream>
+#include <omp.h>
+
+int main()
+{
+    int a = 314;
+#   pragma omp parallel firstprivate(a)
+    {
+        // Lis un numéro unique pour le thread
+        int id = omp_get_thread_num();
+        std::cout << "Le thread n." << id << " peut lire la variable a = " << a 
+                  << std::flush << std::endl;
+        a = 413;
+    }
+    std::cout << "A la sortie de la région parallele, a vaut " << a << std::flush << std::endl;
+    return EXIT_SUCCESS;
+}
+\end{lstlisting}
+
+Sortie de la fonction :
+\begin{verbatim}
+Le thread n.0 peut lire la variable a = 314
+Le thread n.1 peut lire la variable a = 314
+A la sortie de la région parallele, a vaut 314
+\end{verbatim}
 
 Si une fonction est appelée dans la région parallèle, elle sera elle--même considée comme faisant partie de la
 région parallèle. Par contre, les variables définies dans une telle fonction seront considérés comme privées :
@@ -1089,8 +1564,7 @@ b = 92291
 
 Il est parfaitement possible d'allouer au sein d'une région parallèle.
 
-Si le pointeur est privé, l'allocation sera local au thread, sinon, le pointeur sera partagé et il faut s'assurer qu'un
-seul thread allouera la mémoire ( souvent le maître qui sera numéroté par OpenMP comme le thread numéro zéro ).
+Si le pointeur est privé, l'allocation sera local au thread, sinon, le pointeur sera partagé et il faut s'assurer qu'un seul thread allouera la mémoire ( souvent le maître qui sera numéroté par OpenMP comme le thread numéro zéro ).
 
 \begin{lstlisting}
 int main() {
@@ -1116,17 +1590,20 @@ int main() {
 }
 \end{lstlisting}
 
-\subsection{Autres clauses possibles dans une région parallèle}
+\subsection{Autres clauses possibles pour une région parallèle}
 
-\lstinline@Réduction@ : Permet d'effectuer une opération de réduction avec une synchronisation implicite des threads.
+\lstinline@reduction@ : Permet d'effectuer une opération de réduction avec une synchronisation implicite des threads.
 
-\lstinline@num_threads@ : Spécifie le nombre de threads voulues pour une région parallèle donnée ( même fonctionnalité que
-\lstinline@omp_set_num_threads@ ).
+\lstinline@num_threads@ : Spécifie le nombre de threads voulues pour une région parallèle donnée ( même fonctionnalité que \lstinline@omp_set_num_threads@ ).
+
+Ainsi le programme suivant lancera deux threads qui additionneront à s leur numéro de thread + 1
+(le numéro du premier thread est zéro) en appliquant une réduction pour avoir la somme globale à la
+sortie de la zone parallèle.
 
 \begin{lstlisting}
 int main() {
     int s = 0;
-#   pragma omp parallel default(none) private(p) reduction(+:s)
+#   pragma omp parallel reduction(+:s) num_threads(2)
     {
         s = omp_get_thread_num()+1;
     }
@@ -1135,17 +1612,16 @@ int main() {
 }
 \end{lstlisting}
 
-Cette application affichera \verb@s = 3@.
+Cette application affichera bien \verb@s = 3@.
 
 \subsection{Division du travail}
 
-Les fonctionnalités vues ci--dessus sont suffisantes pour paralléliser un programme.
+Les fonctionnalités vues ci--dessus sont suffisantes pour paralléliser un programme (mis à part
+les exclusions mutuelles ou les opérations atomiques vue plus loin).
+
 Cependant OpenMP possède des fonctionnalités permettant de partager le travail automatiquement.
 Dans les autres cas, ce sera la responsabilité du programmeur de répartir de façon équilibrée le travail
 au travers des tâches.
-
-En outre, OpenMP fournit des clauses permettant d'exclure toutes les tâches sauf une d'une zone critique définie
-dans la région parallèle ou bien définir une opération atomique.
 
 \paragraph{Division des boucles en parallèle}
 
@@ -1169,8 +1645,7 @@ Il est possible d'introduire plusieurs clauses \verb@for@ ( une par une ) dans l
 La clause \verb@schedule@ divise la boucle selon plusieurs modes au choix :
 
 \begin{itemize}
- \item Selon un mode statique où la boucle est sectionnée en itérations de tailles fixes distribuées
- de façon cyclique sur les threads;
+ \item Selon un mode statique (pris par défaut par Open MP) où la boucle est sectionnée en itérations de tailles fixes distribuées de façon cyclique sur les threads;
  \begin{lstlisting}
   const int n = 4096;
   double a[n];
@@ -1178,9 +1653,8 @@ La clause \verb@schedule@ divise la boucle selon plusieurs modes au choix :
 # pragma omp parallel private(rang, nb_taches, i_min, i_max)
   {
       rang = omp_get_thread_num();
-      nb_taches = omp_get_num_threads();
       i_min = n; i_max = 0;
-#     pragma omp for schedule(static, n/nb_taches) nowait
+#     pragma omp for nowait
       for ( i = 0; i < n; ++i) {
           a[i] = 92290 + double(i);
           i_min = std::min(i,i_min); i_max = std::max(i,i_max);
@@ -1195,11 +1669,67 @@ La clause \verb@schedule@ divise la boucle selon plusieurs modes au choix :
  rang 1 : i_min = 2048, i_max = 4095 
  \end{verbatim}
 
- \item Selon un mode dynamique : la boucle est découpée en plusieurs petits nombres d'itérations. Quand une tâche
- a finie ses itérations, un nouveau paquet d'itérations lui est attribué.
+ \item Selon un mode dynamique : la boucle est découpée en plusieurs petits nombres d'itérations. Quand une tâche a finie ses itérations, un nouveau paquet d'itérations lui est attribué. On peut spécifier (comme pour
+ la répartition statique d'ailleurs) la taille des paquets d'itérations.
+ Par exemple :
+\begin{lstlisting}
+#include <iostream>
+#include <cstdint>
+#include <cmath>
+#include <vector>
+#include <omp.h>
+
+std::uint64_t syracuse(std::uint64_t u0)
+{
+    std::uint64_t un = u0;
+    std::uint64_t cpteur = 0;
+    do
+    {
+        un = (un%2 == 0 ? un / 2 : (3*un+1)/2);
+        cpteur ++;
+    } while (un != 1);
+    return cpteur;
+}
+
+int main()
+{
+    const std::uint64_t N = 100000000;
+    std::vector<std::uint64_t> lgth_fly(N);
+    double t1 = omp_get_wtime();
+#   pragma omp parallel for
+    for ( std::uint64_t i = 3; i < N; ++i )
+    {
+        lgth_fly[i-3] = syracuse(i);
+    }
+    double t2 = omp_get_wtime();
+    std::cout << "Temps parallélisation statique : " << t2-t1 << " secondes." << std::endl << std::flush;
+
+    t1 = omp_get_wtime();
+    // On choisit de faire beaucoup d'itérations pour 
+    // que le calcul soit quand même conséquent (granularité)
+#   pragma omp parallel for schedule(dynamic,10000)
+    for ( std::uint64_t i = 3; i < N; ++i )
+    {
+        lgth_fly[i-3] = syracuse(i);
+    }
+    t2 = omp_get_wtime();
+    std::cout << "Temps parallélisation dynamique : " << t2-t1 << " secondes." << std::endl << std::flush;
+
+    return EXIT_SUCCESS;
+}\end{lstlisting}
+
+  Attendre que la suite $u_{n}$ atteigne le nombre un prends de plus en plus de temps au fur et à mesure qu'on choisit un $u_{0}$ grand et la probabilité de trouver un nombre d'itérations conséquent augmente. 
+
+  Ainsi, la répartition statique de la boucle est très mal équilibrée. Pour le dynamique, on choisit de
+  faire de grande sections de boucles afin que la gestion dynamique de répartition des blocs de boucles
+  soit invisible par rapport au calcul effectué dans chaque bloc.
+
+  Sur cet exemple, avec six threads (et six coeurs), on trouve que la répartition statique prend
+  douze secondes contre six secondes pour la répartition dynamique !
+
  \item Selon un mode guidé : Les itérations sont découpées en des tailles exponentielles décroissantes
- en taille de paquets d'itérations. Tous les paquets ont une taille plus grande qu'une taille donnée. Les paquets
- sont attribués dynamiquement comme dans le mode précédent.
+ en taille de paquets d'itérations. Tous les paquets ont une taille plus grande qu'une taille donnée. Les paquets sont attribués dynamiquement comme dans le mode précédent. Cette clause est utile pour des
+ cas vraiment très spécifiques et donc rarement utilisée.
 \end{itemize}
 
 Si la clause  \verb@schedule@ n'est pas spécifiée, on peut contrôler le mode de division de la boucle à
@@ -1208,8 +1738,7 @@ l'aide de la variable d'environnement \verb@OMP_SCHEDULE@.
 Enfin, on peut rajouter une clause de réduction appliquée à une variable partagée. Les opérations supportées
 sont les opérations arithmétiques et logiques. 
 
-Chaque tâche calcule un résultat intermédiaire puis se synchronise avec les autres threads pour produire le résultat
-final :
+Chaque tâche calcule un résultat intermédiaire puis se synchronise avec les autres threads pour produire le résultat final :
 
 \begin{lstlisting}
   const int n = 5;
@@ -1537,6 +2066,9 @@ Cette parallélisation se fera sous forme de \textsl{politique d'exécution}, c'
 forme d'un objet qui exprimera la façon ( séquentielle, parallèle, vectorielle, etc. ) dont
 s'exécutera la fonction STL.
 
+Notons que les versions parallèles de la STL supportées par g++ et clang++ utilisent la bibliothèque TBB
+d'Intel !
+
 Par exemple :
 \begin{lstlisting}
 std::vector<int> v = ...
@@ -1570,10 +2102,9 @@ De nouveaux algorithmes sont également proposés, en particuliers pour faire de
 scans.
 
 Peu de compilateurs supportent encore la norme C++ 2017 en ce qui concerne la parallèlisation de la STL.
-Néanmoins, certains compilateurs ``payant'' ainsi que les dernières versions du compilateur gnu (à partir de ka version 9.1)
+Néanmoins, certains compilateurs ``payant'' ainsi que les dernières versions du compilateur gnu (à partir de la version 9.1)
 utilisant la bibliothèque TBB d'INTEL (qui est gratuite)  permettent d'utiliser les algorithmes parallèles
-proposées par la STL. Cependant, en ce qui concerne gcc, il faudra probablement installer à la main (et non
-via des packages) le compilateur après avoir préalablement installer TBB.
+proposées par la STL. 
 
 Pour plus d'information sur la librairie standard parallèle, on peut se référer à la page suivante proposée
 par Intel :
