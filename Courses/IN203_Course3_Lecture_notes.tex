@@ -76,17 +76,17 @@ En informatique, \textbf{un processus} est l’instance d’un programme informa
 importante ressource CPU. Les processus contiennent des informations sur les ressources
 du programme et l'état d'exécution du programme, à savoir :
 \begin{itemize}
- \item Les identificateurs du processus, du groupe du processus, de l'utilisateur, et du groupe de l'utilisateur;
- \item L'environnement;
- \item Le répertoire de travail;
- \item Les instructions du programme;
+ \item les identificateurs du processus, du groupe du processus, de l'utilisateur, et du groupe de l'utilisateur;
+ \item l'environnement;
+ \item le répertoire de travail;
+ \item les instructions du programme;
  \item les registres;
  \item le tas;
  \item la pile;
  \item les descripteurs de fichiers;
  \item les signaux d'action;
  \item les bibliothèques partagées;
- \item Les outils d'intercommunication entre processus : pipes, sémaphores, mémoire partagée,\ldots
+ \item les outils d'intercommunication entre processus : pipes, sémaphores, mémoire partagée \ldots
 \end{itemize}
 
 \textbf{Le thread}, ou \textsl{fil d’exécution} en français, est un  processus et il permet d’exécuter des instructions de langage machine au sein du processeur. La spécificité du thread est qu’il laisse la possibilité à deux instances en train d’interpréter le même programme de s’exécuter en simultané au sein du même processeur. Il se singularise également par le fait qu'il partage la mémoire virtuelle d'un processus ainsi que diverses autres resources. Par contre, chaque thread possède sa propre pile d'exécution.
@@ -97,30 +97,30 @@ Une définition d'un thread peut donc être la suivante  :
 créé par un processus et dont il partage le même espace mémoire. Le thread ne maintient
 que les informations suivantes :
 \begin{itemize}
- \item Le pointeur de tas;
- \item Les registres;
- \item La propriété d'exécution ( politique d'exécution ou priorité );
- \item Un ensemble de signaux bloqués ou en veilles;
- \item Les données spécifiques au thread.
+ \item le pointeur de tas;
+ \item les registres;
+ \item la propriété d'exécution ( politique d'exécution ou priorité );
+ \item un ensemble de signaux bloqués ou en veilles;
+ \item les données spécifiques au thread.
 \end{itemize}
 
 En résumé, un thread ( dans un environnement UNIX ) :
 \begin{itemize}
- \item N'existe qu'au sein d'un processus et utilise les ressources du processus;
- \item Possède son propre flot d'instructions aussi longtemps que son processus parent
+ \item n'existe qu'au sein d'un processus et utilise les ressources du processus;
+ \item possède son propre flot d'instructions aussi longtemps que son processus parent
        existe et que le système d'exploitation le supporte;
- \item Ne duplique que les ressources nécessaires pour son exécution;
- \item Partage les ressources du processus père avec d'autres threads qui agissent également de
+ \item ne duplique que les ressources nécessaires pour son exécution;
+ \item partage les ressources du processus père avec d'autres threads qui agissent également de
  façon indépendante;
- \item Meurt si le processus parent meurt;
- \item Est léger car la plupart des ressources ont déjà été créées lors de la création du processus père.
+ \item meurt si le processus parent meurt;
+ \item est léger car la plupart des ressources ont déjà été créées lors de la création du processus père.
 \end{itemize}
 
 Du fait que les threads partagent les mêmes ressources que le processus père :
 \begin{itemize}
- \item Un changement fait par un thread dans les ressources communes du processus père ( comme fermer un fichier par exemple ) sera vu par tous les autres threads;
- \item Deux pointeurs sur des threads différents auront la même donnée si ils pointent sur la même adresse ( virtuelle );
- \item Lire et écrire au même endroit mémoire par différents threads est possible mais demande une synchronisation par le programmeur.
+ \item un changement fait par un thread dans les ressources communes du processus père ( comme fermer un fichier par exemple ) sera vu par tous les autres threads;
+ \item deux pointeurs sur des threads différents auront la même donnée si ils pointent sur la même adresse ( virtuelle );
+ \item lire et écrire au même endroit mémoire par différents threads est possible mais demande une synchronisation par le programmeur.
 \end{itemize}
 
 Avant C++ 2011, la création et la gestion des threads dépendaient fortement du système d'exploitation employé; chaque OS proposait sa propre API. Depuis la publication de la norme 2011 du C++, le langage propose
@@ -128,7 +128,7 @@ une librairie standardisée permettant une même gestion des threads quelque soi
 sur lequel on compile les sources et exécute le programme. Cette bibliothèque standardisée se repose
 principalement sur la gestion des threads proposée par la norme posix d'unix (dont linux suit la norme).
 
-La création d'un thread provoque son exécution. Il suffit simplement de donner lors de la créatio du thread
+La création d'un thread provoque son exécution. Il suffit simplement de donner lors de la création du thread
 la fonction qu'il doit exécuter en parallèle de l'exécution du processus. Ainsi, un programme
 Helloworld affichant simultanément un message du processus et d'un thread, s'écrira de la manière suivante :
 
@@ -158,7 +158,7 @@ La création du thread, au début de la fonction \texttt{main} appelle immédiat
 la fonction \texttt{call\_from\_thread} qui affichera un message pendant que le programme principal essaiera
 d'afficher un second message.
 
-On peut mesurer la légèreté de création d'un thread en observant le tableau (\ref{tatab:pvst}).
+On peut mesurer la légèreté de création d'un thread en observant le tableau (\ref{tab:pvst}).
 
 Si les threads ont la réputation d'être diaboliques de part la relative complexité
 qu'ils peuvent engendrer en programmation, c'est encore le meilleurs moyen de prendre
@@ -202,7 +202,7 @@ Il faut toujours penser à synchroniser un processus avec chacun de ses threads 
 que le thread termine bien son exécution. En effet, dans le cas contraire, si le programme principal
 se termine avant le thread, il détruit toutes ses variables et au final, le thread n'est plus
 capable d'accéder aux ressources que le processus possédait. On se retrouve alors devant un problème
-majeure ( plantage du thread ). C'est la raison pour laquelle on a besoin en général de se synchroniser
+majeur ( plantage du thread ). C'est la raison pour laquelle on a besoin en général de se synchroniser
 avec la fin du thread pour s'assurer qu'il se termine bien avant le programme principal.
 \end{remark}
 
@@ -224,11 +224,11 @@ avec la fin du thread pour s'assurer qu'il se termine bien avant le programme pr
 
 Il est possible également de créer un thread \texttt{t2} à partir d'un thread \texttt{t1}. Là encore,
 une synchronisation du thread \texttt{t2} est nécessaire dans l'exécution du thread \texttt{t1} pour
-que \texttt{t1} attendent la fin de l'exécution de \texttt{t2} avant de finir lui-même son exécution,
+que \texttt{t1} attende la fin de l'exécution de \texttt{t2} avant de finir lui-même son exécution,
 sous peine d'obtenir une levée d'exception de type \texttt{system\_error}.
 
 Cependant, il est possible dans ce cas de "détacher" le thread \texttt{t2} du thread \texttt{t1}, c'est à dire
-de faire en sorte que le thread \texttt{t2}, créé par \texttt{t1} continue à s'exécuter bien que \texttt{t1} ait
+de faire en sorte que le thread \texttt{t2}, créé par \texttt{t1}, continue à s'exécuter bien que \texttt{t1} ait
 été détruit après son exécution (le thread \texttt{t2} n'est pas détruit à la destruction de \texttt{t1}),
 cependant il est important de noter que le thread détaché s'arrête lorsqu'on quitte le programme principal
 comme cela est illustré et commenté dans le programme \texttt{example\_detach\_thread.cpp} donné dans les exemples.
@@ -281,8 +281,8 @@ Une question importante qui vient avec la programmation multi-threads est : \tex
 
 La réponse naïve serait de dire que le nombre de threads optimal est le nombre d'unités de calculs (c{\oe}urs) se trouvant sur la machine exécutant le code. Cependant, plusieurs autres paramètres devront être pris en compte pour espérer obtenir des accélérations significatives du code, à savoir :
 \begin{enumerate}
-  \item La prise en compte de l'hyperthreading
-  \item Le goulot d'étranglement que représente l'accès à la mémoire vive
+  \item la prise en compte de l'hyperthreading;
+  \item le goulot d'étranglement que représente l'accès à la mémoire vive.
 \end{enumerate}
 
 \subsection{L'hyperthreading}
@@ -294,24 +294,22 @@ de pouvoir ensuite exploiter sur une unité de calcul les différents circuits e
 un thread pourra ainsi exécuter un calcul sur les entiers tandis qu'un deuxième thread, sur la même unité
 de calcul pourra exécuter un calcul sur des réels.
 
-Dans les cas réels d'utilisation de l'hyperthreading, on peut espérer en moyenne  un gain de trente pour cent sur le temps d'exécution du programme par rapport à une exécution en multithreading sans utilisation de
+Dans les cas réels d'utilisation de l'hyperthreading, on peut espérer en moyenne  un gain de 30\,\% sur le temps d'exécution du programme par rapport à une exécution en multithreading sans utilisation de
 l'hyperthreading ( il y aura dans ce cas un thread par unité de calcul ).
 
 Cela rend l'analyse hardware d'un ordinateur un peu complexe à lire sous un système d'exploitation.
-Sous windows, en allant dans le gestionnaire de tâche (accessible via la combinaison de touche Ctrl + Alt + del), sous l'onglet performance, on voit en bas à droite que l'ordinateur possède (par exemple) :
+Sous windows, en allant dans le gestionnaire de tâche (accessible via la combinaison de touche Ctrl + Alt + Del), sous l'onglet performance, on voit en bas à droite que l'ordinateur possède (par exemple) :
 \begin{itemize}
-  \item Un socket
-  \item Quatre c{\oe}urs
-  \item Huit processeurs logiques
+  \item un socket;
+  \item quatre c{\oe}urs;
+  \item huit processeurs logiques.
 \end{itemize}
 
 De même, sous Linux, en tapant la commande 
 \begin{lstlisting}[language=sh]
  lscpu
 \end{lstlisting}
-
 on obtiendra, par exemple, la sortie suivante :
-
 \begin{verbatim}
 ...
 CPU(s):                          8
@@ -324,8 +322,8 @@ Socket(s):                       1
 
 où 
 \begin{itemize}
-  \item \verb@CPU(s)@ correspond aux processeurs logiques de Windows, c'est à dire au nombre de décodeurs d'instruction
-  \item \verb@Core(s) per socket@ correspond aux quatre c{\oe}urs de Windows, c'est à dire au nombre physique d'unité de calcul présent sur l'ordinateur
+  \item \verb@CPU(s)@ correspond aux processeurs logiques de Windows, c'est à dire au nombre de décodeurs d'instruction;
+  \item \verb@Core(s) per socket@ correspond aux quatre c{\oe}urs de Windows, c'est à dire au nombre physique d'unité de calcul présent sur l'ordinateur;
   \item \verb@Socket(s)@ correspond lui-même à une architecture NUMA où on a plusieurs processeurs (et
   leurs mémoires locales) reliés par une crossbar (voir le premier cours). Une seule socket ( ce que vous
   devez logiquement tous avoir) correspond donc à un ordinateur sans architecture NUMA. 
@@ -333,7 +331,7 @@ où
 
 \subsection{Communications efficaces pour l'échange des données}
 
-La motivation principale pour utiliser les threads dans un environnement parallèle haute performance est d'atteindre la performance maximale. En particuliers, si une application utilise MPI pour communiquer point à point, il y a de forte chance que les performances seront améliorées en utilisant des threads à la place.
+La motivation principale pour utiliser les threads dans un environnement parallèle haute performance est d'atteindre la performance maximale. En particulier, si une application utilise MPI pour communiquer point à point, il y a de fortes chances que les performances seront améliorées en utilisant des threads à la place.
 
 En effet, les bibliothèques MPI en mémoire partagée mettent en {\oe}uvre les communications point à point à l'aide de la mémoire partagée ce qui demande au moins une opération de copie mémoire ( de processus à processus ).
 
@@ -352,7 +350,7 @@ de bande passante de la mémoire cache vers le CPU ou de la mémoire principale 
  \rowcolor{lightgray!25}IBM 4.0 GHz Power 6 & 4.1 & 16 \\ \hline
   \end{tabular}
  \end{center}
-  \caption{Comparaison bande passante MPI et bande passante par thread}
+  \caption{Comparaison bande passante MPI et bande passante par thread.}
   \label{tab::compMPIpt}
 \end{table}
 
@@ -429,7 +427,7 @@ Considérons ainsi le programme suivant :
 #include <thread>
 #include <iostream>
 
-void incremente_counter(int& counter) {
+void increment_counter(int& counter) {
     for (int i = 0; i < 5; ++i ) {
         counter = counter + 1;
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -447,7 +445,7 @@ void divide_by_two_if_even(int& counter)
 int main()
 {
     int counter = 0;
-    std::thread t1(incremente_counter, std::ref(counter));
+    std::thread t1(increment_counter, std::ref(counter));
     std::thread t2(divide_by_two_if_even, std::ref(counter));
 
     t1.join(); t2.join();
@@ -483,7 +481,7 @@ très difficiles à trouver dans un code conséquent pour plusieurs raisons :
 Il existe cependant des outils permettant de détecter ces conflits d'accès (et les interblocages qu'on verra plus loin), donc certains gratuits, d'autres payant. Voici une liste non exhaustive de tels outils
 qui permettent de gagner un temps précieux pour la mise au point des codes :
 \begin{itemize}
-  \item Intel inspector : Livré avec leur compilateur, payant et cher, mais efficace !
+  \item Intel inspector : livré avec leur compilateur, payant et cher, mais efficace !
   \item Clang intègre un outil permettant de détecter les conflits d'accès, il suffit de rajouter l'option
   \texttt{-fsanitize=thread} pour analyser les éventuels conflits mémoires dû au multithreading. Ainsi, sous Linux, on peut tester l'outil à l'aide des exemples donnés dans le répertoire \texttt{Example} du cours.
   Ainsi pour tester la détection sur le conflit lecture-écriture du premier exemple :
@@ -552,14 +550,14 @@ ThreadSanitizer: reported 1 warnings
 
   L'outil marche donc plutôt bien sous Linux. Il est par contre dommage qu'il ne soit pas supporté par
   clang sous Windows...
-\item Sous Windows, il existe un utilitaire drace pour détecter les data races, mais difficile à installer (écher personnel !
+\item Sous Windows, il existe un utilitaire drace pour détecter les data races, mais difficile à installer (échec personnel !).
 \end{itemize}
 
 Lorsque l'algorithme exige que plusieurs threads écrivent dans la même zone mémoire ( pour incrémenter un
 compteur par exemple ), il faut utiliser un mécanisme qui va obliger les threads a n'exécuter que un par un
-la partie de l'algorithme où ils écrivent sur la même adresse mémoire. On dit alors que cette partie de l'algorithme est une partie \textbf{séquentielle} de l'algorithme.
+la partie de l'algorithme où ils écrivent sur la même adresse mémoire. On dit alors que la partie correspondante est une partie \textbf{séquentielle} de l'algorithme.
 
-Si cette partie d'algorithme est complexe, on protégera cette partie de l'algorithme par des gardes qui obligeront les threads à ne passer que un par un.
+Si cette partie d'algorithme est complexe, on la protégera par des gardes qui obligeront les threads à ne passer que un par un.
 
 Si c'est une instruction élémentaire ( une addition, soustraction, \ldots ), on peut protéger uniquement cette instruction sans définir une zone, en la déclarant \textbf{atomique}.
 
@@ -567,7 +565,7 @@ Si la partie séquentielle de l'algorithme se réduit à une instruction simple,
 
 \subsection{Notion d'affinité}
 
-Tout système d'exploitation moderne supporte l'affinité par thread. Une affinité signifie qu'au lieu de laisser un thread s'exécuter librement sur n'importe quel unité de calcul, on demande au gestionnaire de tâche du système d'exploitation de n'exécuter un thread particuliers que sur une unité de calcul ou un ensemble prédéfini d'unités de calcul.
+Tout système d'exploitation moderne supporte l'affinité par thread. Une affinité signifie qu'au lieu de laisser un thread s'exécuter librement sur n'importe quel unité de calcul, on demande au gestionnaire de tâche du système d'exploitation de n'exécuter un thread particulier que sur une unité de calcul ou un ensemble prédéfini d'unités de calcul.
 
 Par défaut, un thread peut s'exécuter sur n'importe quel CPU logique ( c'est à dire n'importe quelle unité de calcul ), si bien que le système d'exploitation va exécuter un thread sur une unité de calcul selon des critères du gestionnaire de tâche. De plus, parfois, le système d'exploitation va migrer un thread d'une unité de calcul vers une autre, ce qui peut avoir un sens du point de vue du gestionnaire de tâche ( bien qu'il évitera au maximum de le faire, du fait qu'on perd toutes les données qui étaient en cache dans le c{\oe}ur d'où le thread provient ).
 
@@ -679,17 +677,17 @@ sur lesquels chaque thread s'exécutera. Un exemple de son utilisation est donn�
 
 \subsection{Applications ``memory bound'' vs ``cpu bound''}
 
-Nous avons vu dans le premier cours que la bande passante mémoire était un facteur limitant quant à la vitesse d'exécution d'un programme et que pour palier à la lenteur relative de la mémoire vive, on avait recours soit à de la mémoire vive interlacée, soit à de la mémoire cache, les deux pouvant bien sûr coexister sur une même machine.
+Nous avons vu dans le premier cours que la bande passante mémoire était un facteur limitant quant à la vitesse d'exécution d'un programme et que pour palier à la lenteur relative de la mémoire vive, on avait recours soit à de la mémoire vive entrelacée, soit à de la mémoire cache, les deux pouvant bien sûr coexister sur une même machine.
 
 Ce problème est d'autant plus crucial lorsqu'on programme en parallèle sur mémoire partagée, car la mémoire
 est bien plus sollicitée qu'avec un programme séquentiel.
 
-Malheureusement, selon les problèmes traités et les algorithmes employés, il n'est pas toujours possible d'exploiter efficacement la mémoire cache ou la mémoire vive interlacée.
+Malheureusement, selon les problèmes traités et les algorithmes employés, il n'est pas toujours possible d'exploiter efficacement la mémoire cache ou la mémoire vive entrelacée.
 
 \paragraph{En ce qui concerne la mémoire cache} : L'exploitation de la mémoire cache se base sur une exploitation locale en espace et en temps de variables qu'on pourra lire ou modifier:
 \begin{itemize}
- \item Locale en espace car lors du chargement d'une variable en mémoire cache, on charge de fait une ligne de cache  contenant cette variable mais aussi les variables suivantes, contigües en mémoire;
- \item Locale en temps  car une variable ne restera pas très longtemps en mémoire cache du fait que lors du déroulement du programme, d'autres variables devront être aussi chargées en mémoire cache, et il est fort probable que la variable chargée préalablement sera décharger de la mémoire cache.
+ \item locale en espace car lors du chargement d'une variable en mémoire cache, on charge de fait une ligne de cache  contenant cette variable mais aussi les variables suivantes, contigües en mémoire;
+ \item locale en temps  car une variable ne restera pas très longtemps en mémoire cache du fait que lors du déroulement du programme, d'autres variables devront être aussi chargées en mémoire cache, et il est fort probable que la variable chargée préalablement sera déchargée de la mémoire cache.
 \end{itemize}
 
 Cela demande donc d'écrire des algorithmes pouvant exploiter plusieurs fois dans un bref délai les mêmes variables, à condition que votre algorithme le permette !
@@ -699,12 +697,12 @@ est inférieure à la complexité algorithmique, c'est à dire au nombre d'opér
 
 En effet, si le nombre d'opérations est supérieur au nombre de données exploitées par l'algorithme,
 il est certain (on applique le principe des trous de pigeon qui dit que si il y a $n$ trous
-et $p>n$ pigeons, alors il y a sûrement deux pigeons au moins dans un même trou ) qu'on va exploiter plusieurs
+et $p>n$ pigeons, alors il y a sûrement deux pigeons au moins dans un même trou) qu'on va exploiter plusieurs
 fois certaines variables. Il devient donc intéressant de tenter de modifier notre algorithme pour exploiter
 localement dans le temps la même variable afin qu'elle soit après la première utilisation dans la
-mêmoire cache.
+mémoire cache.
 
-\paragraph{En ce qui concerne la mémoire interlacée} : L'exploitation efficace d'une mémoire interlacée se base sur une lecture contigüe des données en mémoire. Lorsque l'algorithme utilise une lecture aléatoire ou selon un tableau d'indice des données, ce type de mémoire ne se montrera pas plus efficace qu'une mémoire classique.
+\paragraph{En ce qui concerne la mémoire entrelacée} : L'exploitation efficace d'une mémoire entrelacée se base sur une lecture contigüe des données en mémoire. Lorsque l'algorithme utilise une lecture aléatoire ou selon un tableau d'indice des données, ce type de mémoire ne se montrera pas plus efficace qu'une mémoire classique.
 
 
 \begin{definition}
@@ -732,20 +730,20 @@ for ( unsigned int iter = 0; iter < 1023; ++iter ) {
 Visiblement, cet algorithme a une complexité de 2 en accès mémoire et une complexité algorithmique bien supérieure ! Cet algorithme sera clairement adapté à une architecture mémoire contenant de la mémoire cache
 et exploite naturellement les variables  localement en temps et espace. Le CPU pourra facilement calculer une itération de la suite à chaque cycle d'horloge. 
 
-Il en est de même pour une mémoire interlacée puisqu'il est fort probable que les deux seules variables utilisées seront stockées dans des registres du processeur !
+Il en est de même pour une mémoire entrelacée puisqu'il est fort probable que les deux seules variables utilisées seront stockées dans des registres du processeur !
 
 Par contre, la récurrence empêche toute parallélisation de la boucle !
 
 \underline{En conclusion} :
 \begin{itemize}
 \item [Mémoire cache] \textcolor{darkgreen}{Fonction CPU-Bound}. \textcolor{red}{Boucle non parallélisable du faît de la récurrence}.
-\item [Mémoire interlacée] \textcolor{darkgreen}{Fonction CPU-Bound}. \textcolor{red}{Boucle non parallélisable du faît de la récurrence}.
+\item [Mémoire entrelacée] \textcolor{darkgreen}{Fonction CPU-Bound}. \textcolor{red}{Boucle non parallélisable du faît de la récurrence}.
 \end{itemize}
 
 \underline{Opération vectorielle}
 
 \begin{lstlisting}
-unsigned long N = 1'000'000;
+unsigned long N = 1000000;
 std::vector<double> u(N),v(N),w(N);
 ...
 for ( int i = 0; i < N; ++i ) {
@@ -760,7 +758,7 @@ est de $3N$. Il est donc inutile de chercher à optimiser cette fonction afin d'
 Si l'accès mémoire ne sera pas vraiment pénalisant en utilisant un seul c{\oe}ur de calcul (l'accès mémoire est encore "assez rapide" pour cela), il le sera si on cherche à paralléliser cette boucle sur une machine à mémoire partagée avec mémoire cache, d'autant plus que le nombre de threads utilisés augmente !
 
 Par contre, la lecture des données se fait de manière contigüe, et donc cet algorithme est naturellement
-adaptée à une machine avec de la mémoire interlacée (comme un GPGPU par exemple). Il sera donc intéressant
+adaptée à une machine avec de la mémoire entrelacée (comme un GPGPU par exemple). Il sera donc intéressant
 de paralléliser cette boucle pour ce type de machine (ce qui se fait "naturellement" puisqu'il n'y a aucune
 dépendance entre les opérations d'une itération à l'autre) pour gagner en performance !
 
@@ -785,28 +783,28 @@ for ( int i = 0; i < N; ++i )
       C[i+j*N] += A[i+k*N]*B[k+j*N];
 \end{lstlisting}
 
-La complexité algorithmique du produit matrice-matrice est environ de $2n^{3}$ tandis que la complexité en accès
+La complexité algorithmique du produit matrice-matrice est environ de $2N^{3}$ tandis que la complexité en accès
 mémoire est de $3N^{2}$. La complexité algorithmique étant supérieure à la complexité en accès mémoire, il est donc possible d'exploiter la mémoire cache dans cet algorithme.
 
 Par contre, tel que le code est écrit, cet algorithme n'exploite que très partiellement la mémoire cache,
 puisque seule la variable \texttt{C[i+j*N]} est reutilisée dans la boucle la plus interne. De plus, des sauts
-mémoires sont effectués pour accèder aux c{\oe}fficients de \texttt{A} (on saute \texttt{N} valeurs en mémoire à chaque itération sur la boucle en \texttt{k}), ce qui pour certaines valeurs de $N$ peut s'avèrer très pénalisant, autant pour une architecture à mémoire interlacée qu'avec une mémoire cache !
+mémoires sont effectués pour accèder aux c{\oe}fficients de \texttt{A} (on saute \texttt{N} valeurs en mémoire à chaque itération sur la boucle en \texttt{k}), ce qui pour certaines valeurs de $N$ peut s'avèrer très pénalisant, autant pour une architecture à mémoire entrelacée qu'avec une mémoire cache !
 
-En effet, il faut savoir que la mémoire cache, du moins sur les processeurs de type Intel (AMD y compris),
-la mémoire cache est dite "associative". Qu'est ce que cela signifie-t'il donc ? En fait, le terme associatif
+En effet, il faut savoir que la mémoire cache, du moins sur les processeurs de type Intel (AMD compris),
+ est dite "associative". Que cela signifie-t'il donc ? En fait, le terme associatif
 désigne la stratégie adoptée pour stocker les variables provenant de la mémoire principale dans une mémoire RAM. La mémoire cache étant bien plus petite que la mémoire vive (RAM), cette stratégie dite "associative"
 décide de ranger les variables issues de la RAM selon leurs adresses physiques en RAM par le calcul d'un simple modulo.
 
-Les ingénieurs ayant conçu cette stratégie ont bien sûr pensé au cas où des sauts mémoires en RAM faisaient que le hardware essaierai de ranger plusieurs variables à la même adresse dans la mémoire cache. D'une façon très limitée, ils ont donc décidé qu'on pourrait stocker une, deux, quatre ou huit variables (de soixante quatre bits), selon la mémoire cache utilisée par le processeur (on parle alors respectivement de mémoire cache 1-way, 2-ways, 4-ways, 8-ways).
+Les ingénieurs ayant conçu cette stratégie ont bien sûr pensé au cas où des sauts mémoires en RAM feraient que le hardware essaierait de ranger plusieurs variables à la même adresse dans la mémoire cache. D'une façon très limitée, ils ont donc décidé qu'on pourrait stocker une, deux, quatre ou huit variables (de soixante quatre bits), selon la mémoire cache utilisée par le processeur (on parle alors respectivement de mémoire cache 1-way, 2-ways, 4-ways, 8-ways).
 
-Ainsi, tant qu'on peut stocker une variable supplémentaire à une adresse spécifique du cache, il n'y a pas de soucis, mais lorsque cherche à stoker une nouvelle variable à cette adresse alors qu'il n'y a plus de place pour stocker cette variable, le processeur enlévera la variable la plus ancienne qu'il ira reécrire dans la mémoire vive avant de stocker la nouvelle variable. 
+Ainsi, tant qu'on peut stocker une variable supplémentaire à une adresse spécifique du cache, il n'y a pas de soucis, mais lorsque l'on cherche à stoker une nouvelle variable à cette adresse alors qu'il n'y a plus de place pour stocker cette variable, le processeur enlèvera la variable la plus ancienne qu'il ira reécrire dans la mémoire vive avant de stocker la nouvelle variable. 
 
-Pour connaître grosso-modo l'adresse en cache où sera stocker une variable, on peut considérer la formule suivante (la taille étant exprimée en octet) :
+Pour connaître grosso-modo l'adresse en cache où sera stockée une variable, on peut considérer la formule suivante (la taille étant exprimée en octet) :
 \[
 \textrm{Adresse mémoire cache} = \textrm{Addresse mémoire vive} \mod \frac{\textrm{Taille mémoire cache}}{8.\textrm{Nombre de ways}}
 \]
 
-En considérant qu'une mémoire cache L2 a une capacité en générale multiple de $1024^{2}$ octets, on voit
+En considérant qu'une mémoire cache L2 a une capacité en général multiple de $1024^{2}$ octets, on voit
 qu'en prenant une dimension pour la matrice de 1024, nous allons faire pour \texttt{A} des sauts de
 $8\times 1024 = 8192$ octets, nombre divisible par $1024^{2}$, et que nous allons retomber souvent sur la
 même adresse cache dans notre boucle interne, ce qui provoquera alors beaucoup de transfert entre la mémoire cache et la mémoire vive, ralentissant drastiquement le calcul (ce qu'on pourra constater en TP).
@@ -814,7 +812,7 @@ même adresse cache dans notre boucle interne, ce qui provoquera alors beaucoup 
 Heureusement, on peut remarquer que l'ordre des trois boucles imbriquées n'a aucune importance pour le
 calcul, et qu'on peut permuter l'ordre des boucles sans modifier le résultat !
 
-En permuttant l'ordre des boucles de sorte que la boucle en \texttt{i} soit la plus interne, on voit qu'on effectuera deux accès linéaires (pour \texttt{A} et \texttt{C}) ce qui permet d'exploiter les lignes de cache ou profiter de la mémoire interlacée, et qu'on reutilise le même \texttt{B} dans la boucle la plus interne.
+En permuttant l'ordre des boucles de sorte que la boucle en \texttt{i} soit la plus interne, on voit qu'on effectuera deux accès linéaires (pour \texttt{A} et \texttt{C}) ce qui permet d'exploiter les lignes de cache ou profiter de la mémoire entrelacée, et qu'on reutilise le même \texttt{B} dans la boucle la plus interne.
 
 Ainsi, on modifie le code tel que :
 
@@ -829,9 +827,9 @@ for ( int k = 0; k < N; ++k )
       C[i+j*N] += A[i+k*N]*B[k+j*N];
 \end{lstlisting}
 
-Avec ce nouveau code, on pourra constater une accélération substancielle pour certaines dimensions sur une machine avec mémoire cache et une accélération également avec une machine à mémoire interlacée.
+Avec ce nouveau code, on pourra constater une accélération substancielle pour certaines dimensions sur une machine avec mémoire cache et une accélération également avec une machine à mémoire entrelacée.
 
-Si le code s'exécute bien plus rapidement , il reste néanmoins du travail à effectuer sur une machine possédant de la mémoire cache, car la lecture linéaire des c{\oe}fficients de \texttt{A} et \texttt{C} nous empêche d'exploiter vraiment la mémoire cache.
+Si le code s'exécute bien plus rapidement, il reste néanmoins du travail à effectuer sur une machine possédant de la mémoire cache, car la lecture linéaire des c{\oe}fficients de \texttt{A} et \texttt{C} nous empêche d'exploiter vraiment la mémoire cache.
 
 La solution pour exploiter la redondance des données pour la mémoire cache est ici de faire le produit matrice--matrice à l'aide d'une approche par bloc :
 
@@ -884,7 +882,7 @@ for ( int jb = 0; jb < N; jb += szBloc )
             C[i+j*N] += A[i+k*N]*B[k+j*N];
 \end{lstlisting}
 
-On verra en TD comment paralléliser "facilement" ce code à l'aide des directives OPENMP (voir plus loin dans ce cours pour les directives OPENMP).
+On verra en TD comment paralléliser "facilement" ce code à l'aide des directives OpenMP (voir plus loin dans ce cours pour les directives OpenMP).
 
 En ce qui concerne la mémoire entrelacée, en plus de la modification de l'ordre des boucles en mettant la boucle en i comme boucle la plus interne ( voir la deuxième version du produit ), 
 il est possible d'optimiser l'accès aux données de $B$. En effet, supposons dans un premier temps
@@ -897,7 +895,7 @@ L'astuce dans ce cas pour s'assurer un accès optimal à la mémoire entrelacée
 
 Le code devriendra donc :
 \begin{lstlisting}
-// nb_ways est le nombre de voies de la mémoire interlacée
+// nb_ways est le nombre de voies de la mémoire entrelacée
 const int NbRows = N+ (nb_ways - 1 - N%nb_ways);
 std::vector<double> A(N*NbRows);
 std::vector<double> B(N*NbRows);
