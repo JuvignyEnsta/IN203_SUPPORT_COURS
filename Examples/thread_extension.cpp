@@ -73,8 +73,7 @@ namespace thread
 
     void set_affinity(std::thread::native_handle_type th, std::uint32_t mask)
     {
-        thread_policy_set(pthread_mach_thread_np(thread),
-        THREAD_AFFINITY_POLICY, (integer_t *)&mask, 1);
+        thread_policy_set(pthread_mach_thread_np(th),THREAD_AFFINITY_POLICY, (integer_t *)&mask, 1);
     }
 
     void set_current_affinity(std::uint32_t mask)
