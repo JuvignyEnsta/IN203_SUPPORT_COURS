@@ -935,7 +935,7 @@ int main() {
 
   //Join the thread with the main thread
   t1.join();
-
+é
   return 0;
 }
 \end{lstlisting}
@@ -1009,7 +1009,7 @@ On a vu dans les généralités qu'il est possible d'avoir une partie d'un code 
 
 On utilise dans ce cas une instance de la classe \lstinline@mutex@ qui est une primitive de synchronisation qui peut être utilisée pour protéger des données partagées simultanément par plusieurs threads.
 
-Le mutex propose une sémantique de propriété exclusif et non-récursif~:
+Le mutex propose une sémantique de propriété exclusive et non-récursive~:
 
 \begin{itemize}
 \item Un thread appelant possède un mutex quand il réussit l'appel à 
@@ -1027,7 +1027,7 @@ des éléments :
 std::map<std::string, std::string> g_pages;
 std::mutex g_pages_mutex;
 
-// Fonction censée sauver une page html accessible par une adresse internet. 
+// Fonction sensée sauver une page html accessible par une adresse internet. 
 void save_page(const std::string &url)
 {
     // On simule un temps long pour l'obtention d'une page internet

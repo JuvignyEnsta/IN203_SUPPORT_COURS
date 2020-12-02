@@ -1,6 +1,6 @@
 #include Make_linux.inc
-include Make_msys2.inc
-#include Make_osx.inc
+#include Make_msys2.inc
+include Make_osx.inc
 
 CXXFLAGS = -std=c++11 -fPIC
 CXXFLAGS17 = -std=c++17 -fPIC
