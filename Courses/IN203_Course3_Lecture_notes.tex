@@ -89,7 +89,7 @@ du programme et l'état d'exécution du programme, à savoir :
  \item les outils d'intercommunication entre processus : pipes, sémaphores, mémoire partagée \ldots
 \end{itemize}
 
-\textbf{Le thread}, ou \textsl{fil d’exécution} en français, est un  processus et il permet d’exécuter des instructions de langage machine au sein du processeur. La spécificité du thread est qu’il laisse la possibilité à deux instances en train d’interpréter le même programme de s’exécuter en simultané au sein du même processeur. Il se singularise également par le fait qu'il partage la mémoire virtuelle d'un processus ainsi que diverses autres resources. Par contre, chaque thread possède sa propre pile d'exécution.
+\textbf{Le thread}, ou \textsl{fil d’exécution} en français, est un  processus et il permet d’exécuter des instructions de langage machine au sein du processeur. La spécificité du thread est qu’il laisse la possibilité à deux instances en train d’interpréter le même programme de s’exécuter en simultané au sein du même processeur. Il se singularise également par le fait qu'il partage la mémoire virtuelle d'un processus ainsi que diverses autres ressources. Par contre, chaque thread possède sa propre pile d'exécution.
 
 Une définition d'un thread peut donc être la suivante  : 
 
@@ -411,7 +411,7 @@ mais parfois (dans mes essais, c'était une fois sur dix environ), le programme 
 1 2 3 3 4 5 6 7 8 9
 \end{verbatim}
 
-Que s'est-il passé ? En fait, si les deux threads possèdent cent pout cent des ressources de leur unité de calcul respectif, l'affichage se déroule correctement, car le thread \texttt{t1} étant créé avant le thread
+Que s'est-il passé ? En fait, si les deux threads possèdent cent pour cent des ressources de leur unité de calcul respectif, l'affichage se déroule correctement, car le thread \texttt{t1} étant créé avant le thread
 \texttt{t2}, il incrémente le compteur juste avant l'affichage par le deuxième thread.
 
 Mais parfois, il arrive que le premier thread prenne un peu de retard (ressource système ou autre lui prenant du temps de calcul), et dans ce cas, c'est le second thread qui se met à afficher le compteur avant qu'il soit
@@ -736,8 +736,8 @@ Par contre, la récurrence empêche toute parallélisation de la boucle !
 
 \underline{En conclusion} :
 \begin{itemize}
-\item [Mémoire cache] \textcolor{darkgreen}{Fonction CPU-Bound}. \textcolor{red}{Boucle non parallélisable du faît de la récurrence}.
-\item [Mémoire entrelacée] \textcolor{darkgreen}{Fonction CPU-Bound}. \textcolor{red}{Boucle non parallélisable du faît de la récurrence}.
+\item [Mémoire cache] \textcolor{darkgreen}{Fonction CPU-Bound}. \textcolor{red}{Boucle non parallélisable du fait de la récurrence}.
+\item [Mémoire interlacée] \textcolor{darkgreen}{Fonction CPU-Bound}. \textcolor{red}{Boucle non parallélisable du fait de la récurrence}.
 \end{itemize}
 
 \underline{Opération vectorielle}
@@ -764,7 +764,7 @@ dépendance entre les opérations d'une itération à l'autre) pour gagner en pe
 
 \underline{En conclusion} :
 \begin{itemize}
-\item [Mémoire cache] \textcolor{darkred}{Memory-bound, impossible à exploiter le cache}. \textcolor{darkred}{Inutile de paralléliser le code, l'accès mémoire empêchera tout gain substanciel en temps de calcul}.
+\item [Mémoire cache] \textcolor{darkred}{Memory-bound, impossible à exploiter le cache}. \textcolor{darkred}{Inutile de paralléliser le code, l'accès mémoire empêchera tout gain substantiel en temps de calcul}.
 \item [Mémoire entrelacée] \textcolor{darkgreen}{CPU-Bound}. \textcolor{darkgreen}{Oui, il est intéressant de paralléliser si la boucle est suffisamment longue, on gagnera vraiment en performance !}
 \end{itemize}
 
@@ -801,7 +801,7 @@ Ainsi, tant qu'on peut stocker une variable supplémentaire à une adresse spéc
 
 Pour connaître grosso-modo l'adresse en cache où sera stockée une variable, on peut considérer la formule suivante (la taille étant exprimée en octet) :
 \[
-\textrm{Adresse mémoire cache} = \textrm{Addresse mémoire vive} \mod \frac{\textrm{Taille mémoire cache}}{8.\textrm{Nombre de ways}}
+\textrm{Adresse mémoire cache} = \textrm{Adresse mémoire vive} \mod \frac{\textrm{Taille mémoire cache}}{8.\textrm{Nombre de ways}}
 \]
 
 En considérant qu'une mémoire cache L2 a une capacité en général multiple de $1024^{2}$ octets, on voit
@@ -850,11 +850,11 @@ for ( int kb = 0; kb < N; kb += szBloc )
             C[i+j*N] += A[i+k*N]*B[k+j*N];
 \end{lstlisting}
 
-Dans le code modifié par bloc, on reexploite bien dans un court intervalle une partie des données
+Dans le code modifié par bloc, on réexploite bien dans un court intervalle une partie des données
 de \texttt{C} et de \texttt{A}. De plus, le nombre de c{\oe}fficients de $C$ et de $A$ stockée pour chaque
 boucle en \texttt{i} et \texttt{j} est suffisamment petit pour rester en mémoire cache, si bien que la boucle
-en \texttt{k} pourra au fur et à mesure des itérations reutiliser les données de \texttt{C} stockées en cache.
-De même, la boucle en \texttt{j} pourra reutiliser les données de \texttt{A} stockée en cache lors du premier passage dans la boucle en \texttt{i}.
+en \texttt{k} pourra au fur et à mesure des itérations réutiliser les données de \texttt{C} stockées en cache.
+De même, la boucle en \texttt{j} pourra réutiliser les données de \texttt{A} stockée en cache lors du premier passage dans la boucle en \texttt{i}.
 
 Pour la parallélisation du produit matrice-matrice, il faut bien observer qu'on ne pourra pas paralléliser
 la boucle en \texttt{kb}. En effet, on cumule une somme sur une variable dont l'adresse mémoire ne dépend
@@ -940,7 +940,7 @@ int main() {
 
 En général, on souhaite lancer plus qu'un thread et faire plusieurs tâches en parallèle. Pour faire cela,
 il faut créer un tableau de thread pour pouvoir les gérer. 
-Dans l'exemple suivant, la fonction principale créée un groupe de dix threads  qui feront plusieur tâches puis elle attendra que les dix threads aient fini :
+Dans l'exemple suivant, la fonction principale créée un groupe de dix threads  qui feront plusieurs tâches puis elle attendra que les dix threads aient fini :
 
 \begin{lstlisting}
 static const int num_threads = 10;
@@ -1007,7 +1007,7 @@ On a vu dans les généralités qu'il est possible d'avoir une partie d'un code 
 
 On utilise dans ce cas une instance de la classe \lstinline@mutex@ qui est une primitive de synchronisation qui peut être utilisée pour protéger des données partagées simultanément par plusieurs threads.
 
-Le mutex propose une sémantique une sémantique de propriété exclusif et non-récursif :
+Le mutex propose une sémantique une sémantique de propriété exclusif et non-récursif~:
 
 \begin{itemize}
 \item Un thread appelant possède un mutex quand il réussit l'appel à 
@@ -1066,7 +1066,7 @@ mais qu'en enlevant les lignes \texttt{g\_pages\_mutex.lock();} et \texttt{g\_pa
 clang détecte bien des conflits !
 
 Si les mutex permettent de résoudre les problèmes de conflits mémoires éventuels, ils coûtent chers
-en ressource CPU et peuvent ammener à des inter-blocages. Considérons le programme suivant :
+en ressource CPU et peuvent amener à des inter-blocages. Considérons le programme suivant :
 
 \begin{lstlisting}
 #include <thread>
@@ -1126,17 +1126,18 @@ int main() {
     std::thread t3(increment_both_values);
 
     t1.detach(); t2.detach(); t3.detach();
-    std::cout << "Processus principal : j'ai detache mes trois processus" << std::flush << std::endl;
+    std::cout << "Processus principal : j'ai detache mes trois processus"
+              << std::flush << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(10));
     std::cout << "J'ai attendu dix secondes. Bye bye !" << std::flush << std::endl;
     return EXIT_SUCCESS;
 }
 \end{lstlisting}
 
-Si vous le compilez et l'exécuter plusieurs fois dans le répertoire \texttt{Examples}, vous verrez que
+Si vous le compilez et l'exécutez plusieurs fois dans le répertoire \texttt{Examples}, vous verrez que
 parfois les threads se terminent (en affichant "End increment..."), parfois ne se terminent pas et
 sont tués lorsque le programme principal se termine au bout de dix secondes. Dans le programme donné
-dans \texttt{Examples}, on affiche en plus la valeur incréméntée ou décrémentée de \texttt{value1}
+dans \texttt{Examples}, on affiche en plus la valeur incrémentée ou décrémentée de \texttt{value1}
 et \texttt{value2}. On constate que lorsque les threads semblent se geler à des itérations différentes
 à chaque exécution.
 L'explication est que nous sommes selon l'ordre d'exécution de chacun des threads dans une situation d'interblocage ou non. 
@@ -1146,7 +1147,7 @@ En effet, imaginons le scénario suivant :
   \item Le processus \texttt{t1} verrouille \texttt{lock\_value1};
   \item Pendant ce temps, le processus \texttt{t2} verrouille \texttt{lock\_value2};
   \item Quand le processus \texttt{t2} déverrouille \texttt{lock\_value2}, c'est \texttt{t3} qui
-        vérrouille \texttt{lock\_value2}
+        verrouille \texttt{lock\_value2}
   \item \texttt{t1} attend que \texttt{t3} déverrouille \texttt{lock\_value2};
   \item \texttt{t3} attend que \texttt{t1} déverrouille \texttt{lock\_value1};
   \item \texttt{t2} attend que \texttt{t3} déverrouille \texttt{lock\_value2};
@@ -1244,7 +1245,7 @@ Si vous exécutez le code \texttt{exemple\_interblocage\_correction.exe}, vous c
 interblocages aléatoires ont disparus. 
 
 La gestion propre et rigoureuse des mutex est un sujet en choix. Il faut savoir que C++ 2011 ( et 2017
-qui en rajout ed'autres) propose une vaste panoplie de stratégie pour les mutex (en particuliers pour les fonctions récursives), et que seul ce cours ne suffirait pas à les répertorier.
+qui en rajoute d'autres) propose une vaste panoplie de stratégie pour les mutex (en particuliers pour les fonctions récursives), et que seul ce cours ne suffirait pas à les répertorier.
 
 \subsubsection{Les atomics}
 
@@ -1321,7 +1322,7 @@ OpenMP.
 On peut contrôler dynamiquement le nombre de threads générés par l'application à l'aide de 
 la variable d'environnement \verb@OMP_NUM_THREADS@ mais aussi à l'aide de fonctions fournies par la bibliothèque d'OpenMP.
 
-Les prototypes des fonctions associées avec OpenMP sont définis dans le fichier d'entête \lstinline@omp.h@.
+Les prototypes des fonctions associées avec OpenMP sont définis dans le fichier d'en-tête \lstinline@omp.h@.
 
 \subsection{Construire une région parallèle}
 
@@ -1470,8 +1471,7 @@ Déclarer \texttt{a} en privée a donc pour conséquence que :
   \item Le compilateur vous préviens que la variable \texttt{a} dans la zone parallèle n'est pas initialisée
   lors de l'affichage;
   \item La valeur de a qu'affiche chaque thread sera différente de celle donnée dans le processus principal
-  \item La valeur affichée en sortie de la zone parallèle est celle donnée avant l'entrée dans la zone parallèle, ne prenant pas en compte la modification du \texttt{a} fait dans la région parallèle ( ce qui est normale, puisque le \texttt{a} dans la région parallèle n'est pas la même variable que celle dans le proce
-  ssus.)
+  \item La valeur affichée en sortie de la zone parallèle est celle donnée avant l'entrée dans la zone parallèle, ne prenant pas en compte la modification du \texttt{a} fait dans la région parallèle ( ce qui est normale, puisque le \texttt{a} dans la région parallèle n'est pas la même variable que celle dans le processus.)
 \end{itemize}
 
 
@@ -1533,7 +1533,7 @@ a = 92290
 a = 92291
 \end{verbatim}
 
-Tout paramêtre passé à la fonction par pointeur ou par référence prendra le même status que la variable passée en paramètre.
+Tout paramètre passé à la fonction par pointeur ou par référence prendra le même status que la variable passée en paramètre.
 
 \begin{lstlisting}
 void function(double& a, double& b) {
@@ -1700,7 +1700,8 @@ int main()
         lgth_fly[i-3] = syracuse(i);
     }
     double t2 = omp_get_wtime();
-    std::cout << "Temps parallélisation statique : " << t2-t1 << " secondes." << std::endl << std::flush;
+    std::cout << "Temps parallélisation statique : " << t2-t1 << " secondes."
+              << std::endl << std::flush;
 
     t1 = omp_get_wtime();
     // On choisit de faire beaucoup d'itérations pour 
@@ -1711,7 +1712,8 @@ int main()
         lgth_fly[i-3] = syracuse(i);
     }
     t2 = omp_get_wtime();
-    std::cout << "Temps parallélisation dynamique : " << t2-t1 << " secondes." << std::endl << std::flush;
+    std::cout << "Temps parallélisation dynamique : " << t2-t1 << " secondes."
+              << std::endl << std::flush;
 
     return EXIT_SUCCESS;
 }\end{lstlisting}
@@ -2005,8 +2007,8 @@ if( MyQueue.try_pop(item) ) {
 Il est également possible de définir un graphe de tâche, où les n{\oe}uds représentent
 des tâches à exécuter et les arêtes les dépendances entre ces tâches ( par exemple une tâche
 $T_{2}$ ne pourra pas s'exécuter avant une tâche $T_{1}$ si la tâche $T_{2}$ prend en entrée
-ce que la tâche $T_{1}$ retourne en sortie ). TBB exploitera alors le parallèlisme
-inhérant à la topologie du graphe de tâche ( quand il peut exécuter plusieurs tâches qui ne sont pas reliées
+ce que la tâche $T_{1}$ retourne en sortie ). TBB exploitera alors le parallélisme
+inhérent à la topologie du graphe de tâche ( quand il peut exécuter plusieurs tâches qui ne sont pas reliées
 par une arête et qui ne dépendent pas d'autres tâches encore non exécutée ). 
 
 Voici un petit exemple d'Hello  world écrit à l'aide d'un graphe de tâche :
@@ -2045,7 +2047,7 @@ les n{\oe}uds aient exécutée leur tâche.
 
 D'autres utilitaires sont proposées par TBB comme des allocateurs permettant pour l'un
 d'allouer simultanément plusieurs zones mémoires et pour l'autre de s'assurer que deux objets
-gérés par deux threads différents n'appartiennent pas à la même ligne de cache.En effet, dans
+gérés par deux threads différents n'appartiennent pas à la même ligne de cache. En effet, dans
 le cas contraire, afin d'assurer la cohérence des caches, lorsque deux unités de calcul essaient
 d'accéder à deux objets appartenant à la même ligne de cache, le hardware doit déplacer la ligne
 de cache d'un processeur à l'autre ( même si il n'y a en fait aucun conflit entre les deux
